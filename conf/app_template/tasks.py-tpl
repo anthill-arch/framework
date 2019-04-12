@@ -1,0 +1,10 @@
+"""
+Example:
+
+    @app.task(ignore_result=True)
+    def your_task():
+        ...
+"""
+
+
+# Create your celery tasks here
