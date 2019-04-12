@@ -1,3 +1,3 @@
 ==================================================
-Django/Flask-like wrapper on Tornado web framework
+Wrapper on Tornado web framework
 ==================================================
