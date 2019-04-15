@@ -119,6 +119,8 @@ class Application:
         self.command_parser = CommandParser(self.raise_on_conflict_commands)
 
         self._version = None
+        self._latest_version = None
+        self.has_updates = False
 
         setattr(self, '__ident_func__', get_ident)
 
@@ -155,6 +157,16 @@ class Application:
     @version.setter
     def version(self, value):
         self._version = value
+
+    @property
+    def latest_version(self):
+        if self._latest_version:
+            return self._latest_version
+        return self._version
+
+    @latest_version.setter
+    def latest_version(self, value):
+        self._latest_version = value
 
     @property
     def registry_entry(self):
@@ -339,6 +351,8 @@ class Application:
             'description': str(self.config.APPLICATION_DESCRIPTION),
             'color': self.config.APPLICATION_COLOR,
             'version': self.version,
+            'latest_version': self.latest_version,
+            'has_updates': self.has_updates,
             'debug': self.debug,
         }
 
