@@ -1,11 +1,8 @@
 import ipaddress
 
 
-def first(*args, default=None):
-    try:
-        return next(item for item in args if item is not None)
-    except StopIteration:
-        return default
+def first(*args):
+    return next((item for item in args if item is not None), None)
 
 
 def get_ip(request):
