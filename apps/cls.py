@@ -342,7 +342,6 @@ class Application:
         return service_instance
 
     @property
-    @lru_cache()
     def metadata(self):
         return {
             'name': self.config.APPLICATION_NAME,

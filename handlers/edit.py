@@ -4,7 +4,7 @@ from anthill.framework.core.exceptions import ImproperlyConfigured
 from anthill.framework.handlers.detail import (
     SingleObjectMixin, SingleObjectTemplateMixin, DetailHandler)
 from anthill.framework.forms.orm import model_form
-from anthill.framework.utils.asynchronous import thread_pool_exec
+from anthill.framework.utils.asynchronous import thread_pool_exec as future_exec
 from anthill.framework.db import db
 
 
@@ -111,14 +111,17 @@ class ModelFormMixin(FormMixin, SingleObjectMixin):
                     "a get_absolute_url method on the Model.")
         return url
 
+    def configure_object(self, form):
+        form.populate_obj(self.object)
+
     async def form_valid(self, form):
         """If the form is valid, save the associated model."""
         if self.object is None:
             model = self.get_model()
             # noinspection PyAttributeOutsideInit
             self.object = model()
-        form.populate_obj(self.object)
-        await thread_pool_exec(self.object.save)
+        self.configure_object(form)
+        await future_exec(self.object.save)
         await super().form_valid(form)
 
 
@@ -231,7 +234,7 @@ class DeletionMixin:
         """
         # noinspection PyAttributeOutsideInit
         self.object = await self.get_object()
-        await thread_pool_exec(self.object.delete)
+        await future_exec(self.object.delete)
         self.redirect(self.get_success_url())
 
     # Add support for browsers which only accept GET and POST for now.
