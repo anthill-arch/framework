@@ -1,4 +1,4 @@
-tornado>=5.0
+tornado>=5.0,<6.0
 requests
 pytz
 SQLAlchemy
