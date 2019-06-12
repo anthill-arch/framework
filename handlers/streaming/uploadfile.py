@@ -43,14 +43,13 @@ class UploadFileStreamHandlerMixin:
                 "You cannot set the upload handlers after the upload has been processed.")
         self._upload_handlers = upload_handlers
 
-    # noinspection PyMethodMayBeStatic
     def filename_transform(self, name):
-        return name
+        pass
 
     async def process_files(self):
         for files in self.request.files.values():
             for f in files:
-                f_name = self.filename_transform(f.name)
+                f_name = self.filename_transform(f.name) or f.name
                 default_storage.save(f_name, f.file)
                 f.close()
 

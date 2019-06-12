@@ -17,6 +17,7 @@ graphene
 graphene-sqlalchemy
 PyJWT
 python-socketio
+python-engineio<=3.5.2
 aiohttp
 websockets
 six
