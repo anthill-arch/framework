@@ -2,6 +2,8 @@ from anthill.framework.utils.text import slugify, camel_case_to_spaces, class_na
 from anthill.framework.utils.module_loading import import_string
 from anthill.framework.conf import settings
 from marshmallow_sqlalchemy import ModelConversionError, ModelSchema, convert
+from sqlalchemy_utils import get_columns
+from sqlalchemy import event
 from urllib.parse import urlparse, urljoin
 from collections import defaultdict
 from functools import lru_cache
@@ -273,8 +275,30 @@ class Application:
 
                 setattr(cls, '__marshmallow__', schema_class)
 
+        def add_events(cls):
+            from anthill.framework.db.types import FileType
+
+            def get_file_columns(target):
+                return filter(lambda c: isinstance(c.type, FileType), get_columns(target))
+
+            @event.listens_for(cls, 'before_insert')
+            def before_model_create_file_type_listener(mapper, connection, target):
+                for column in get_file_columns(target):
+                    column.type.before_save(getattr(target, column.key), create=True)
+
+            @event.listens_for(cls, 'before_update')
+            def before_model_update_file_type_listener(mapper, connection, target):
+                for column in get_file_columns(target):
+                    column.type.before_save(getattr(target, column.key))
+
+            @event.listens_for(cls, 'after_delete')
+            def after_model_delete_file_type_listener(mapper, connection, target):
+                for column in get_file_columns(target):
+                    column.type.after_delete(getattr(target, column.key))
+
         for model in models:
             add_schema(model)
+            add_events(model)
 
     # noinspection PyMethodMayBeStatic
     def pre_setup_models(self):

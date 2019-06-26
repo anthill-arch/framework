@@ -38,7 +38,7 @@ class Model(ActiveRecordMixin, DefaultModel):
         if obj:
             return obj, False
         else:
-            params = dict((k, v) for k, v in kwargs.iteritems())
+            params = dict((k, v) for k, v in kwargs.items())
             params.update(defaults or {})
             obj = cls(**params)
             return obj, True
@@ -51,7 +51,7 @@ class Model(ActiveRecordMixin, DefaultModel):
                 setattr(obj, key, value)
             created = False
         else:
-            params = dict((k, v) for k, v in kwargs.iteritems())
+            params = dict((k, v) for k, v in kwargs.items())
             params.update(defaults or {})
             obj = cls(**params)
             created = True

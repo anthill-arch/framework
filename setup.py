@@ -95,7 +95,8 @@ setup(
         'aiohttp',
         'websockets',
         'six',
-        'phonenumbers'
+        'phonenumbers',
+        'Pillow'
     ],
     extras_require={
 

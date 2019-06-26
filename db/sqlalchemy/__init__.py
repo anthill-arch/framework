@@ -85,12 +85,20 @@ def _include_sqlalchemy(obj, cls):
         for key in module.__all__:
             if not hasattr(obj, key):
                 setattr(obj, key, getattr(module, key))
+
     # Note: obj.Table does not attempt to be a SQLAlchemy Table class.
     obj.Table = _make_table(obj)
     obj.relationship = _wrap_with_default_query_class(obj.relationship, cls)
     obj.relation = _wrap_with_default_query_class(obj.relation, cls)
     obj.dynamic_loader = _wrap_with_default_query_class(obj.dynamic_loader, cls)
     obj.event = event
+
+
+def _include_custom_types(obj, cls):
+    from anthill.framework.db import types
+    for key in types.__all__:
+        if not hasattr(obj, key):
+            setattr(obj, key, getattr(types, key))
 
 
 class _DebugQueryTuple(tuple):
@@ -581,6 +589,7 @@ class SQLAlchemy:
         self.app = app
 
         _include_sqlalchemy(self, query_class)
+        _include_custom_types(self, query_class)
 
         if app is not None:
             self.init_app(app)
