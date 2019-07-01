@@ -296,9 +296,8 @@ class Application:
                 for column in get_file_columns(target):
                     column.type.after_delete(getattr(target, column.key))
 
-        for model in models:
-            add_schema(model)
-            add_events(model)
+        map(add_schema, models)
+        map(add_events, models)
 
     # noinspection PyMethodMayBeStatic
     def pre_setup_models(self):

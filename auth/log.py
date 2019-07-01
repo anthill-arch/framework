@@ -6,9 +6,13 @@ import logging
 import functools
 import os
 
+
 __all__ = ['get_user_logger', 'ApplicationLogger']
 
+
 USER_LOGGING_ROOT_DIR = getattr(settings, 'USER_LOGGING_ROOT_DIR', '')
+USER_LOGGING_MAX_FILE_SIZE = getattr(settings, 'USER_LOGGING_MAX_FILE_SIZE', 50 * 1024 * 1024)
+USER_LOGGING_BACKUP_COUNT = getattr(settings, 'USER_LOGGING_BACKUP_COUNT', 10)
 
 
 class UserFormatter(LogFormatter):
@@ -30,20 +34,17 @@ class RequireDebugTrue(logging.Filter):
         return settings.DEBUG
 
 
-def get_user_logger(user):
-    username = 'anonymous' if isinstance(user, AnonymousUser) else user.username
-    logger = logging.getLogger('user.' + username)
+def get_user_logger(user, root_dir=USER_LOGGING_ROOT_DIR,
+                    max_file_size=USER_LOGGING_MAX_FILE_SIZE,
+                    backup_count=USER_LOGGING_BACKUP_COUNT):
 
-    formatter_settings = {
-        'fmt': '[%(levelname)1.1s %(asctime)s %(module)s:%(lineno)d] %(message)s',
-        'datefmt': '%Y-%m-%d %H:%M:%S',
-    }
-    formatter = UserFormatter(**formatter_settings)
+    username = 'anonymous' if isinstance(user, AnonymousUser) else user.username
+    logger = logging.getLogger('user.%s' % username)
 
     handler_settings = {
-        'filename': os.path.join(USER_LOGGING_ROOT_DIR, username + '.log'),
-        'maxBytes': 50 * 1024 * 1024,  # 50 MiB
-        'backupCount': 10,
+        'filename': os.path.join(root_dir, '%s.log' % username),
+        'maxBytes': max_file_size,
+        'backupCount': backup_count,
     }
     try:
         handler = UserRotatingFileHandler(**handler_settings)
@@ -52,23 +53,30 @@ def get_user_logger(user):
         if not settings.DEBUG:
             raise
     else:
+        formatter_settings = {
+            'fmt': '[%(levelname)1.1s %(asctime)s %(module)s:%(lineno)d] %(message)s',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        }
+        formatter = UserFormatter(**formatter_settings)
+
         handler.setLevel(logging.INFO)
         handler.setFormatter(formatter)
         handler.addFilter(RequireDebugFalse)
-        logger.addHandler(handler)
+
+        if not logger.handlers:
+            logger.addHandler(handler)
 
     return logger
 
 
 class ApplicationLogger:
-    def __init__(self, user):
+    def __init__(self, user, logger=None):
         self._user = user
-        self._logger = logging.getLogger('anthill.application')
+        self._logger = logger or logging.getLogger('anthill.application')
 
     def __getattr__(self, name):
         attr = getattr(self._logger, name)
-        names = ('debug', 'info', 'warning', 'error', 'critical', 'exception', 'log')
-        if name in names:
+        if name in ('debug', 'info', 'warning', 'error', 'critical', 'exception', 'log'):
             return functools.partial(attr, extra={'username': self._user.username})
         else:
             return attr

@@ -1,11 +1,10 @@
-import os
-import socket
-
-import geoip2.database
-
 from anthill.framework.conf import settings
 from anthill.framework.core.exceptions import ValidationError
 from anthill.framework.core.validators import validate_ipv46_address
+import geoip2.database
+import socket
+import os
+
 
 # Creating the settings dictionary with any settings, if needed.
 GEOIP_SETTINGS = {

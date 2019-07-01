@@ -6,24 +6,24 @@ from datetime import datetime
 import posixpath
 
 
-class FieldFile(File):
-    def __init__(self, field, name):
+class FieldTypeFile(File):
+    def __init__(self, field_type, name):
         super().__init__(None, name)
-        self.field = field
-        self.storage = field.storage
+        self.field_type = field_type
+        self.storage = field_type.storage
         self._committed = True
 
     def __hash__(self):
         return hash(self.name)
 
     # The standard File contains most of the necessary properties, but
-    # FieldFiles can be instantiated without a name, so that needs to
+    # FieldTypeFiles can be instantiated without a name, so that needs to
     # be checked for here.
 
     def _require_file(self):
         if not self:
             raise ValueError("The '%s' attribute has no file "
-                             "associated with it." % self.field.name)
+                             "associated with it." % self.field_type.name)
 
     def _get_file(self):
         self._require_file()
@@ -64,13 +64,13 @@ class FieldFile(File):
             self.file.open(mode)
         return self
 
-    # In addition to the standard File API, FieldFiles have extra methods
+    # In addition to the standard File API, FieldTypeFiles have extra methods
     # to further manipulate the underlying file.
 
     def save(self, name, content):
-        name = self.field.generate_filename(name)
+        name = self.field_type.generate_filename(name)
         self.name = self.storage.save(
-            name, content, max_length=self.field.max_length)
+            name, content, max_length=self.field_type.max_length)
         self._committed = True
 
     def delete(self):
@@ -98,7 +98,7 @@ class FieldFile(File):
             file.close()
 
 
-class ImageFieldFile(ImageFile, FieldFile):
+class ImageFieldTypeFile(ImageFile, FieldTypeFile):
     def delete(self):
         # Clear the image dimensions cache
         if hasattr(self, '_dimensions_cache'):
@@ -109,7 +109,7 @@ class ImageFieldFile(ImageFile, FieldFile):
 class FileDescriptor:
     """
     The descriptor for the file attribute on the model instance.
-    Return a FieldFile when accessed so you can write code like::
+    Return a FieldTypeFile when accessed so you can write code like::
 
         >>> from myapp.models import MyModel
         >>> instance = MyModel.query.get(1)
@@ -120,8 +120,8 @@ class FileDescriptor:
         >>> with open('/path/to/hello.world', 'r') as f:
         ...     instance.file = File(f)
     """
-    def __init__(self, field):
-        self.field = field
+    def __init__(self, field_type):
+        self.field_type = field_type
 
     def __get__(self, instance, cls=None):
         if instance is None:
@@ -162,7 +162,7 @@ class FileType(TypeDecorator):
         if value is not None:
             return value
 
-        if isinstance(value, FieldFile):
+        if isinstance(value, FieldTypeFile):
             value = value.name
 
         return value
@@ -172,7 +172,7 @@ class FileType(TypeDecorator):
             return value
 
         if isinstance(value, str):
-            value = FieldFile(self, value)
+            value = FieldTypeFile(self, value)
 
         return value
 
@@ -238,7 +238,7 @@ class ImageType(FileType):
         if value is not None:
             return value
 
-        if isinstance(value, ImageFieldFile):
+        if isinstance(value, ImageFieldTypeFile):
             value = value.name
 
         return value
@@ -248,6 +248,6 @@ class ImageType(FileType):
             return value
 
         if isinstance(value, str):
-            value = ImageFieldFile(self, value)
+            value = ImageFieldTypeFile(self, value)
 
         return value
