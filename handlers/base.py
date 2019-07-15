@@ -15,6 +15,7 @@ from anthill.framework.utils.serializer import AlchemyJSONEncoder
 from anthill.framework.http import HttpGoneError, Http404, HttpServerError
 from anthill.framework.conf import settings
 from tornado import httputil
+from typing import Any
 import json
 import logging
 import os
@@ -211,9 +212,11 @@ class JsonWebSocketHandler(WebSocketHandler):
 
 class JSONHandlerMixin:
     extra_context = None
+    encoder = AlchemyJSONEncoder
+    content_type = 'application/json'
 
     def set_default_headers(self):
-        self.set_header('Content-Type', 'application/json')
+        self.set_header('Content-Type', self.content_type)
 
     def write_error(self, status_code: int, **kwargs) -> None:
         """
@@ -230,9 +233,8 @@ class JSONHandlerMixin:
         """
         if self.settings.get("serve_traceback") and "exc_info" in kwargs:
             # in debug mode, try to send a traceback
-            self.set_header('Content-Type', 'text/plain')
             reporter = ExceptionReporter(self, exc_info=kwargs["exc_info"])
-            self.finish(reporter.get_traceback_text())
+            error_message = reporter.get_traceback_text()
         else:
             http_error = None
             for line in kwargs["exc_info"]:
@@ -242,9 +244,9 @@ class JSONHandlerMixin:
             error_message = ''
             if http_error:
                 error_message = http_error.log_message
-            self.write_json(status_code=status_code, message=error_message)
+        self.write_json(status_code=status_code, message=error_message)
 
-    def write_json(self, status_code: int = 200, message: str = None, data: any = None) -> None:
+    def write_json(self, status_code: int = 200, message: str = None, data: Any = None) -> None:
         """
         Writes json response to client, decoding `data` to json with HTTP-header.
 
@@ -253,7 +255,7 @@ class JSONHandlerMixin:
         :param data: data to pass to client
         :return:
         """
-        self.set_header('Content-Type', 'application/json')
+        self.set_header('Content-Type', self.content_type)
         self.set_status(status_code, message)
         if status_code == 204:
             # status code expects no body
@@ -268,9 +270,8 @@ class JSONHandlerMixin:
             } if status_code != 204 else None
             self.finish(self.dumps(result))
 
-    # noinspection PyMethodMayBeStatic
     def dumps(self, data):
-        return json.dumps(data, cls=AlchemyJSONEncoder).replace("</", "<\\/")
+        return json.dumps(data, cls=self.encoder).replace("</", "<\\/")
 
     async def get_context_data(self, **kwargs):
         if self.extra_context is not None:
@@ -462,10 +463,7 @@ class RedirectHandler(RedirectMixin, RequestHandler):
 class JSONHandler(JSONHandlerMixin, RequestHandler):
     async def get(self, *args, **kwargs):
         context = await self.get_context_data(**kwargs)
-        self.write(context)
-
-    def write(self, data):
-        super().write(self.dumps(data))
+        self.write_json(data=context)
 
 
 class StaticFileHandler(SessionHandlerMixin, BaseStaticFileHandler):

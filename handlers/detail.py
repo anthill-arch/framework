@@ -1,9 +1,8 @@
-from anthill.framework.handlers.base import (
-    ContextMixin, RequestHandler, TemplateMixin)
+from anthill.framework.handlers.base import ContextMixin, RequestHandler, TemplateMixin
 from anthill.framework.http import Http404
 from anthill.framework.utils.translation import translate as _
 from anthill.framework.utils.text import slugify
-from anthill.framework.utils.asynchronous import thread_pool_exec
+from anthill.framework.utils.asynchronous import thread_pool_exec as future_exec, as_future
 from anthill.framework.core.exceptions import ImproperlyConfigured
 from anthill.framework.db import db
 
@@ -17,14 +16,15 @@ class SingleObjectMixin(ContextMixin):
     slug_field = 'slug'
     context_object_name = None
     slug_url_kwarg = 'slug'
-    pk_url_kwarg = 'pk'
+    pk_url_kwarg = 'id'
     query_pk_and_slug = False
 
-    async def get_object(self, queryset=None):
+    @as_future
+    def get_object(self, queryset=None):
         """
         Return the object the handler is displaying.
 
-        Require `self.queryset` and a `pk` or `slug` argument in the url entry.
+        Require `self.queryset` and a `id` or `slug` argument in the url entry.
         Subclasses can override this to return any object.
         """
         # Use a custom queryset if provided.
@@ -35,12 +35,12 @@ class SingleObjectMixin(ContextMixin):
         pk = self.path_kwargs.get(self.pk_url_kwarg)
         slug = self.path_kwargs.get(self.slug_url_kwarg)
         if pk is not None:
-            queryset = await thread_pool_exec(queryset.filter_by, pk=pk)
+            queryset = queryset.filter_by(id=pk)
 
         # Next, try looking up by slug.
         if slug is not None and (pk is None or self.query_pk_and_slug):
             slug_field = self.get_slug_field()
-            queryset = await thread_pool_exec(queryset.filter_by, **{slug_field: slug})
+            queryset = queryset.filter_by(**{slug_field: slug})
 
         # If none of those are defined, it's an error.
         if pk is None and slug is None:
@@ -49,7 +49,7 @@ class SingleObjectMixin(ContextMixin):
                 "pk or a slug in the url." % self.__class__.__name__)
 
         # Get the single item from the filtered queryset
-        obj = await thread_pool_exec(queryset.one_or_none)
+        obj = queryset.one_or_none()
         if obj is None:
             raise Http404
 
@@ -104,9 +104,9 @@ class SingleObjectTemplateMixin(TemplateMixin):
     template_name_field = None
     template_name_suffix = '_detail'
 
-    def get_template_names(self):
+    def get_template_name(self):
         """
-        Return a list of template names to be used for the request.
+        Return a template name to be used for the request.
         Return the following list:
 
         * the value of ``template_name`` on the handler (if provided)
@@ -115,7 +115,7 @@ class SingleObjectTemplateMixin(TemplateMixin):
         * ``<model_name><template_name_suffix>.html``
         """
         try:
-            names = super().get_template_names()
+            name = super().get_template_name()
         except ImproperlyConfigured:
             # If template_name isn't specified, it's not a problem --
             # we just start with an empty list.
@@ -127,27 +127,27 @@ class SingleObjectTemplateMixin(TemplateMixin):
             if self.object and self.template_name_field:
                 name = getattr(self.object, self.template_name_field, None)
                 if name:
-                    names.insert(0, name)
+                    names.append(name)
 
             # The least-specific option is the default <model>_detail.html;
             # only use this if the object in question is a model.
             if isinstance(self.object, db.Model):
                 names.append("%s%s.html" % (
                     slugify(self.object.__class__.__name__),
-                    self.template_name_suffix
-                ))
+                    self.template_name_suffix))
             elif getattr(self, 'model', None) is not None and issubclass(self.model, db.Model):
                 names.append("%s%s.html" % (
                     slugify(self.model.__name__),
-                    self.template_name_suffix
-                ))
+                    self.template_name_suffix))
 
             # If we still haven't managed to find any template names, we should
             # re-raise the ImproperlyConfigured to alert the user.
             if not names:
                 raise
 
-        return names
+            name = names[0]
+
+        return name
 
 
 class DetailHandler(SingleObjectMixin, SingleObjectTemplateMixin, RequestHandler):
