@@ -17,6 +17,7 @@ from anthill.framework.auth.handlers import (
 from anthill.framework.handlers.edit import (
     FormMixin, ProcessFormHandler, BaseFormHandler, FormHandler
 )
+from anthill.framework.handlers.base import UserHandlerMixin
 
 __all__ = [
     'RequestHandler', 'TemplateHandler', 'RedirectHandler',
@@ -28,5 +29,6 @@ __all__ = [
     'UploadFileStreamHandler',
     'GraphQLHandler',
     'LoginHandlerMixin', 'LogoutHandlerMixin', 'LoginHandler', 'LogoutHandler',
-    'FormMixin', 'ProcessFormHandler', 'BaseFormHandler', 'FormHandler'
+    'FormMixin', 'ProcessFormHandler', 'BaseFormHandler', 'FormHandler',
+    'UserHandlerMixin'
 ]
