@@ -1,7 +1,6 @@
 from anthill.framework.handlers.base import ContextMixin, RequestHandler, TemplateMixin
 from anthill.framework.http import Http404
 from anthill.framework.utils.translation import translate as _
-from anthill.framework.utils.text import slugify
 from anthill.framework.utils.asynchronous import thread_pool_exec as future_exec, as_future
 from anthill.framework.core.exceptions import ImproperlyConfigured
 from anthill.framework.db import db
@@ -35,7 +34,7 @@ class SingleObjectMixin(ContextMixin):
         pk = self.path_kwargs.get(self.pk_url_kwarg)
         slug = self.path_kwargs.get(self.slug_url_kwarg)
         if pk is not None:
-            queryset = queryset.filter_by(id=pk)
+            queryset = queryset.filter_by(**{self.pk_url_kwarg: pk})
 
         # Next, try looking up by slug.
         if slug is not None and (pk is None or self.query_pk_and_slug):
@@ -84,7 +83,7 @@ class SingleObjectMixin(ContextMixin):
         if self.context_object_name:
             return self.context_object_name
         elif isinstance(obj, db.Model):
-            return slugify(obj.__class__.__name__)
+            return obj.__class__.__name__.lower()
         else:
             return None
 
@@ -133,11 +132,11 @@ class SingleObjectTemplateMixin(TemplateMixin):
             # only use this if the object in question is a model.
             if isinstance(self.object, db.Model):
                 names.append("%s%s.html" % (
-                    slugify(self.object.__class__.__name__),
+                    self.object.__class__.__name__.lower(),
                     self.template_name_suffix))
             elif getattr(self, 'model', None) is not None and issubclass(self.model, db.Model):
                 names.append("%s%s.html" % (
-                    slugify(self.model.__name__),
+                    self.model.__name__.lower(),
                     self.template_name_suffix))
 
             # If we still haven't managed to find any template names, we should

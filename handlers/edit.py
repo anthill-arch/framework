@@ -1,5 +1,4 @@
-from anthill.framework.handlers.base import (
-    ContextMixin, RequestHandler, TemplateMixin)
+from anthill.framework.handlers.base import ContextMixin, RequestHandler, TemplateMixin
 from anthill.framework.core.exceptions import ImproperlyConfigured
 from anthill.framework.handlers.detail import (
     SingleObjectMixin, SingleObjectTemplateMixin, DetailHandler)
@@ -48,7 +47,8 @@ class FormMixin(ContextMixin):
     def get_success_url(self):
         """Return the URL to redirect to after processing a valid form."""
         if not self.success_url:
-            raise ImproperlyConfigured("No URL to redirect to. Provide a success_url.")
+            raise ImproperlyConfigured(
+                "No URL to redirect to. Provide a success_url.")
         return str(self.success_url)  # success_url may be lazy
 
     async def form_valid(self, form):
@@ -82,7 +82,8 @@ class ModelFormMixin(FormMixin, SingleObjectMixin):
             # Try to get a queryset and extract the model class
             # from that
             queryset = self.get_queryset()
-            return queryset.one().__class__
+            # noinspection PyProtectedMember
+            return queryset._entities[0].type
 
     def get_form_class(self):
         """Return the form class to use in this handler."""

@@ -13,6 +13,18 @@ from anthill.framework.utils.module_loading import import_string
 from anthill.framework.utils.urls import build_absolute_uri
 from anthill.framework.utils.serializer import AlchemyJSONEncoder
 from anthill.framework.http import HttpGoneError, Http404, HttpServerError
+from anthill.framework.utils.crypto import constant_time_compare
+from anthill.framework.auth import (
+    _get_user_session_key,
+    _get_backends,
+    BACKEND_SESSION_KEY,
+    HASH_SESSION_KEY,
+    REDIRECT_FIELD_NAME,
+    SESSION_KEY,
+    load_backend
+)
+from anthill.framework.auth.models import AnonymousUser
+from anthill.framework.auth.log import get_user_logger, ApplicationLogger
 from anthill.framework.conf import settings
 from tornado import httputil
 from typing import Any
@@ -67,8 +79,45 @@ class CommonRequestHandlerMixin:
         return self.request.protocol in ('https',)
 
 
-class RequestHandler(TranslationHandlerMixin, LogExceptionHandlerMixin, SessionHandlerMixin,
-                     CommonRequestHandlerMixin, BaseRequestHandler):
+class UserHandlerMixin:
+    async def get_user(self):
+        """
+        Return the user model instance associated with the given session.
+        If no user is retrieved, return an instance of `AnonymousUser`.
+        """
+        user = None
+        try:
+            user_id = _get_user_session_key(self)
+            backend_path = self.session[BACKEND_SESSION_KEY]
+        except KeyError:
+            pass
+        else:
+            if backend_path in settings.AUTHENTICATION_BACKENDS:
+                backend = load_backend(backend_path)
+                user = await backend.get_user(user_id)
+                # Verify the session
+                if hasattr(user, 'get_session_auth_hash'):
+                    session_hash = self.session.get(HASH_SESSION_KEY)
+                    session_hash_verified = session_hash and constant_time_compare(
+                        session_hash,
+                        user.get_session_auth_hash()
+                    )
+                    if not session_hash_verified:
+                        self.session.flush()
+                        user = None
+
+        return user or AnonymousUser()
+
+    # noinspection PyAttributeOutsideInit
+    async def prepare(self):
+        # super().prepare()
+        self.current_user = await self.get_user()
+        self.user_logger = get_user_logger(self.current_user)
+        self.app_logger = ApplicationLogger(self.current_user)
+
+
+class RequestHandler(TranslationHandlerMixin, LogExceptionHandlerMixin, UserHandlerMixin,
+                     SessionHandlerMixin, CommonRequestHandlerMixin, BaseRequestHandler):
     def __init__(self, application, request, **kwargs):
         super().__init__(application, request, **kwargs)
         self.init_session()
@@ -101,6 +150,7 @@ class RequestHandler(TranslationHandlerMixin, LogExceptionHandlerMixin, SessionH
     async def prepare(self):
         """Called at the beginning of a request before  `get`/`post`/etc."""
         self.setup_session()
+        await super().prepare()
 
     def finish(self, chunk=None):
         """Finishes this response, ending the HTTP request."""
@@ -151,8 +201,8 @@ class InMemoryClientsWatcher(BaseClientsWatcher):
         return handler.current_user.id
 
 
-class WebSocketHandler(TranslationHandlerMixin, LogExceptionHandlerMixin, SessionHandlerMixin,
-                       CommonRequestHandlerMixin, BaseWebSocketHandler):
+class WebSocketHandler(TranslationHandlerMixin, LogExceptionHandlerMixin, UserHandlerMixin,
+                       SessionHandlerMixin, CommonRequestHandlerMixin, BaseWebSocketHandler):
     clients = None
 
     def __init__(self, application, request, **kwargs):
@@ -168,6 +218,7 @@ class WebSocketHandler(TranslationHandlerMixin, LogExceptionHandlerMixin, Sessio
         connection is opened.
         """
         self.setup_session()
+        await super().prepare()
 
     async def on_message(self, message):
         """Handle incoming messages on the WebSocket."""
@@ -462,8 +513,8 @@ class RedirectHandler(RedirectMixin, RequestHandler):
 
 class JSONHandler(JSONHandlerMixin, RequestHandler):
     async def get(self, *args, **kwargs):
-        context = await self.get_context_data(**kwargs)
-        self.write_json(data=context)
+        data = await self.get_context_data(**kwargs)
+        self.write_json(data=data)
 
 
 class StaticFileHandler(SessionHandlerMixin, BaseStaticFileHandler):

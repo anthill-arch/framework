@@ -1,7 +1,7 @@
 from anthill.framework.conf import settings
 from anthill.framework.handlers.base import (
     TranslationHandlerMixin, LogExceptionHandlerMixin, SessionHandlerMixin,
-    CommonRequestHandlerMixin
+    CommonRequestHandlerMixin, UserHandlerMixin
 )
 import socketio
 import logging
@@ -29,8 +29,8 @@ socketio_client = socketio.AsyncClient(
 BaseSocketIOHandler = socketio.get_tornado_handler(socketio_server)
 
 
-class SocketIOHandler(TranslationHandlerMixin, LogExceptionHandlerMixin, SessionHandlerMixin,
-                      CommonRequestHandlerMixin, BaseSocketIOHandler):
+class SocketIOHandler(TranslationHandlerMixin, LogExceptionHandlerMixin, UserHandlerMixin,
+                      SessionHandlerMixin, CommonRequestHandlerMixin, BaseSocketIOHandler):
     clients = None
 
     def __init__(self, application, request, **kwargs):
@@ -46,6 +46,7 @@ class SocketIOHandler(TranslationHandlerMixin, LogExceptionHandlerMixin, Session
         connection is opened.
         """
         self.setup_session()
+        await super().prepare()
 
     async def on_message(self, message):
         """Handle incoming messages on the WebSocket."""

@@ -186,7 +186,9 @@ class MultipleObjectTemplateMixin(TemplateMixin):
             # name list so that user-supplied names override the automatically-
             # generated ones.
             if isinstance(self.object_list, Query):
-                names.append("%s%s.html" % (opts.model_name, self.template_name_suffix))
+                # noinspection PyProtectedMember
+                label_name = "_".join(map(lambda x: x._label_name.lower(), self.object_list._entities))
+                names.append("%s%s.html" % (label_name, self.template_name_suffix))
             elif not names:
                 raise ImproperlyConfigured(
                     "%(cls)s requires either a 'template_name' attribute "
