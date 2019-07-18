@@ -92,21 +92,16 @@ class WatchLogFileHandler(WatchTextFileHandler):
     def get_filename(self) -> str:
         if self.filename:
             return self.filename
-        # Try to retrieve file name from logging configuration.
+        # Try to retrieve filename from logging configuration.
         try:
-            logging_config = settings.LOGGING
+            return settings.LOGGING['handlers'][self.handler_name]['filename']
         except AttributeError:
             raise ValueError('Logging configuration not defined')
-        else:
-            try:
-                handlers = logging_config['handlers']
-                try:
-                    handler = handlers[self.handler_name]
-                    try:
-                        return handler['filename']
-                    except KeyError:
-                        raise ValueError('Log file not defined for handler `%s`' % self.handler_name)
-                except KeyError:
-                    raise ValueError('Logging handler `%s` not defined' % self.handler_name)
-            except KeyError:
+        except KeyError as e:
+            key = e.args[0]
+            if key is 'handlers':
                 raise ValueError('Logging handlers not defined')
+            elif key is self.handler_name:
+                raise ValueError('Logging handler not defined: %s' % self.handler_name)
+            elif key is 'filename':
+                raise ValueError('Log file not defined for handler: %s' % self.handler_name)
