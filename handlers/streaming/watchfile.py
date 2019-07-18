@@ -30,7 +30,11 @@ class WatchFileHandler(WebSocketHandler):
     def get_filename(self) -> str:
         return self.filename
 
-    def open(self):
+    async def _read_until(self):
+        data = await self._process.stdout.read_until(b'\n')
+        await self.write_line(data)
+
+    async def open(self):
         cmd = ['tail']
         cmd += ['-n', str(self.last_lines_limit)]
         cmd += self.extra_args
@@ -42,7 +46,7 @@ class WatchFileHandler(WebSocketHandler):
             self.close(reason=str(e))
         else:
             self._process.set_exit_callback(self._close)
-            self._process.stdout.read_until(b'\n', self.write_line)
+            await self._read_until()
 
     def _close(self) -> None:
         self.close(reason=self.streaming_finished_message)
@@ -55,9 +59,9 @@ class WatchFileHandler(WebSocketHandler):
     def transform_output_data(self, data: bytes) -> bytes:
         return data
 
-    def write_line(self, data: bytes) -> None:
+    async def write_line(self, data: bytes) -> None:
         self.write_message(self.transform_output_data(data.strip()))
-        self._process.stdout.read_until(b'\n', self.write_line)
+        await self._read_until()
 
     def check_origin(self, origin):
         return True
