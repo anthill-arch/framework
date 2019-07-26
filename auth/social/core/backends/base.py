@@ -132,6 +132,7 @@ class BaseAuth(object):
                 entry = (entry,)
             size = len(entry)
             if size >= 1 and size <= 3:
+            # if 1 <= size <= 3:
                 if size == 3:
                     name, alias, discard = entry
                 elif size == 2:
