@@ -119,7 +119,7 @@ class Backup:
 
     def get_files(self) -> Iterator:
         """List all files in the backup directory."""
-        _, files = self.storage.listdir('/')
+        _, files = self.storage.listdir('.')
         return filter(lambda nm: self.get_timestamp(nm), files)
 
     def generate_filename(self, class_name: str, ts: Optional[str] = None) -> str:
