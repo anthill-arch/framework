@@ -16,7 +16,7 @@ def create():
     """Create a backup based on SQLAlchemy mapped classes."""
 
     alchemy = AlchemyDumpsDatabase()
-    data = alchemy.get_data()
+    data = alchemy.dumps()
     back = Backup()
 
     for class_name in data.keys():
@@ -27,7 +27,7 @@ def create():
             print('Error creating {} at {}'.format(
                 file_name, back.storage.path(file_name)))
         else:
-            rows = len(alchemy.parse_data(data[class_name]))
+            rows = len(alchemy.loads(data[class_name]))
             print('{} rows from {} saved as {}'.format(
                 rows, class_name, back.storage.path(file_name)))
 
@@ -76,7 +76,7 @@ def restore(date_id):
 
             # restore to the db
             db = alchemy.db()
-            for row in alchemy.parse_data(content):
+            for row in alchemy.loads(content):
                 try:
                     db.session.merge(row)
                     db.session.commit()

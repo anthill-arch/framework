@@ -1,7 +1,9 @@
-from sqlalchemy.ext.serializer import dumps, loads
+from .serializer import DefaultSerializer
 
 
 class AlchemyDumpsDatabase:
+    serializer = DefaultSerializer
+
     def __init__(self):
         self.do_not_backup = list()
         self.models = list()
@@ -25,16 +27,16 @@ class AlchemyDumpsDatabase:
         else:
             self.models.append(model)
 
-    def get_data(self):
+    def dumps(self):
         """Go through every mapped class and dumps the data."""
         db = self.db()
         data = dict()
         for model in self.get_mapped_classes():
             query = db.session.query(model)
-            data[model.__name__] = dumps(query.all())
+            data[model.__name__] = self.serializer.dumps(query.all())
         return data
 
-    def parse_data(self, contents):
+    def loads(self, content):
         """Loads a dump and convert it into rows."""
         db = self.db()
-        return loads(contents, db.metadata, db.session)
+        return self.serializer.loads(content, db.metadata, db.session)
