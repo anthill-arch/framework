@@ -20,14 +20,14 @@ class BackupAutoClean:
         :return: integer with the number of the days of the previous month
         """
         first_day = date(self.today.year, self.today.month, 1)  # current month
-        last_day = first_day - timedelta(days=1)  # last month
+        last_day = first_day - timedelta(days=1)                # last month
         return monthrange(last_day.year, last_day.month)[1]
 
     def get_last_year_length(self):
         """
         :return: integer with the number of the days of the previous year
         """
-        first_day = date(self.today.year, 1, 1)  # current year
+        first_day = date(self.today.year, 1, 1)   # current year
         last_day = first_day - timedelta(days=1)  # last year
         return 366 if isleap(last_day.year) else 365
 

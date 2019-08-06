@@ -1,1 +1,1 @@
-# Originating from https://github.com/jschneier/django-storages
+# Originated from https://github.com/jschneier/django-storages
