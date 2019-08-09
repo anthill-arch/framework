@@ -9,10 +9,12 @@ from .startproject import StartProject
 from .sendtestemail import SendTestEmail
 from .version import Version
 from .mmdbupdate import GeoIPMMDBUpdate
-# from .dumpsdb import DatabaseDumpsCommand
+from .dumpdata import DumpData
+from .loaddata import LoadData
+
 
 __all__ = [
     'ApplicationChooser', 'Clean', 'CompileMessages', 'Server',
     'Shell', 'StartApplication', 'SendTestEmail', 'Version', 'StartProject',
-    'MakeMessages', 'GeoIPMMDBUpdate'
+    'MakeMessages', 'GeoIPMMDBUpdate', 'DumpData', 'LoadData'
 ]

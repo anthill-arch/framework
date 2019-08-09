@@ -135,6 +135,13 @@ FILE_UPLOAD_PERMISSIONS = None
 # see https://docs.python.org/3/library/os.html#files-and-directories.
 FILE_UPLOAD_DIRECTORY_PERMISSIONS = None
 
+############
+# FIXTURES #
+############
+
+# The list of directories to search for fixtures
+FIXTURE_DIRS = []
+
 #########
 # CACHE #
 #########

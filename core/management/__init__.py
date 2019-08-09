@@ -3,7 +3,7 @@ from .base import Group, Command, Option, InvalidCommand
 from .commands import (
     Server, Shell, Version,
     StartApplication, ApplicationChooser, SendTestEmail,
-    CompileMessages, StartProject, GeoIPMMDBUpdate
+    CompileMessages, StartProject, GeoIPMMDBUpdate, DumpData, LoadData
 )
 import argparse
 import os
@@ -422,9 +422,10 @@ class AppManager(BaseManager):
         if "db" not in self._commands:
             from anthill.framework.db.management import MigrateCommand
             self.add_command("db", MigrateCommand)
-        if "dumpsdb" not in self._commands:
-            from anthill.framework.core.management.commands.dumpsdb import DatabaseDumpsCommand
-            self.add_command("dumpsdb", DatabaseDumpsCommand)
+        if "loaddata" not in self._commands:
+            self.add_command("loaddats", LoadData)
+        if "dumpdata" not in self._commands:
+            self.add_command("dump", DumpData)
 
         super(AppManager, self).add_default_commands()
 
