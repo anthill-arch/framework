@@ -18,14 +18,20 @@ class Model(ActiveRecordMixin, DefaultModel):
     #     self.session.flush()
     #     return self
 
-    def dump(self):
+    def dump(self, schema=None):
         """Marshmallow default schema data dump."""
-        model_schema = getattr(self, '__marshmallow__')
+        try:
+            model_schema = schema or getattr(self, '__marshmallow__')
+        except AttributeError:
+            raise ValueError("Scheme class not configured")
         return model_schema.dump(self)
 
     @classmethod
-    def dump_many(cls, objects):
-        model_schema = getattr(cls, '__marshmallow__')
+    def dump_many(cls, objects, schema=None):
+        try:
+            model_schema = schema or getattr(cls, '__marshmallow__')
+        except AttributeError:
+            raise ValueError("Scheme class not configured")
         return model_schema(many=True).dump(objects)
 
     @classmethod

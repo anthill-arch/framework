@@ -1,5 +1,33 @@
 from anthill.framework.core.management import Command, Option, InvalidCommand
+from anthill.framework.utils.serializer import AnthillJSONEncoder
 from anthill.framework.apps.builder import app
+from io import StringIO
+import collections
+import decimal
+import json
+import yaml
+
+
+# Use the C (faster) implementation if possible
+try:
+    from yaml import CSafeDumper as SafeDumper
+except ImportError:
+    from yaml import SafeDumper
+
+
+class AnthillSafeDumper(SafeDumper):
+    def represent_decimal(self, data):
+        return self.represent_scalar('tag:yaml.org,2002:str', str(data))
+
+    def represent_ordered_dict(self, data):
+        return self.represent_mapping('tag:yaml.org,2002:map', data.items())
+
+
+AnthillSafeDumper.add_representer(decimal.Decimal, AnthillSafeDumper.represent_decimal)
+AnthillSafeDumper.add_representer(collections.OrderedDict, AnthillSafeDumper.represent_ordered_dict)
+# Workaround to represent dictionaries in insertion order.
+# See https://github.com/yaml/pyyaml/pull/143.
+AnthillSafeDumper.add_representer(dict, AnthillSafeDumper.represent_ordered_dict)
 
 
 class DumpData(Command):
@@ -87,8 +115,172 @@ class DumpData(Command):
                 yield query.all()
 
 
+class ProgressBar:
+    progress_width = 75
+
+    def __init__(self, output, total_count):
+        self.output = output
+        self.total_count = total_count
+        self.prev_done = 0
+
+    def update(self, count):
+        if not self.output:
+            return
+        perc = count * 100 // self.total_count
+        done = perc * self.progress_width // 100
+        if self.prev_done >= done:
+            return
+        self.prev_done = done
+        cr = '' if self.total_count == 1 else '\r'
+        self.output.write(cr + '[' + '.' * done + ' ' * (self.progress_width - done) + ']')
+        if done == self.progress_width:
+            self.output.write('\n')
+        self.output.flush()
+
+
+class BaseSerializer:
+    """Abstract serializer base class."""
+    progress_class = ProgressBar
+    stream_class = StringIO
+
+    # noinspection PyAttributeOutsideInit
+    def serialize(self, queryset, *, stream=None, fields=None,
+                  progress_output=None, object_count=0, **options):
+        """Serialize a queryset."""
+        self.options = options
+
+        self.stream = stream if stream is not None else self.stream_class()
+        self.selected_fields = fields
+        progress_bar = self.progress_class(progress_output, object_count)
+
+        self.start_serialization()
+        self.first = True
+
+        for count, obj in enumerate(queryset, start=1):
+            self.start_object(obj)
+            self.end_object(obj)
+            progress_bar.update(count)
+            self.first = self.first and False
+
+        self.end_serialization()
+
+    def start_serialization(self):
+        """
+        Called when serializing of the queryset starts.
+        """
+        raise NotImplementedError('subclasses of Serializer must provide a start_serialization() method')
+
+    def end_serialization(self):
+        """
+        Called when serializing of the queryset ends.
+        """
+
+    def start_object(self, obj):
+        """
+        Called when serializing of an object starts.
+        """
+        raise NotImplementedError('subclasses of Serializer must provide a start_object() method')
+
+    def end_object(self, obj):
+        """
+        Called when serializing of an object ends.
+        """
+
+    def getvalue(self):
+        """
+        Return the fully serialized queryset (or None if the output stream is
+        not seekable).
+        """
+        if callable(getattr(self.stream, 'getvalue', None)):
+            return self.stream.getvalue()
+
+
+# noinspection PyAttributeOutsideInit
+class PythonSerializer(BaseSerializer):
+    """Serialize a QuerySet to basic Python objects."""
+
+    def start_serialization(self):
+        self.objects = []
+
+    def end_serialization(self):
+        pass
+
+    def start_object(self, obj):
+        pass
+
+    def end_object(self, obj):
+        self.objects.append(self.get_dump_object(obj))
+
+    # noinspection PyMethodMayBeStatic
+    def get_dump_object(self, obj):
+        fields = obj.dump().data
+        del fields['id']
+        return {
+            'model': obj.__class__.__name__,
+            'id': obj.id,
+            'fields': fields
+        }
+
+    def getvalue(self):
+        return self.objects
+
+
+class YAMLSerializer(PythonSerializer):
+    """Convert a queryset to YAML."""
+
+    def end_serialization(self):
+        yaml.dump(self.objects, self.stream, Dumper=AnthillSafeDumper, **self.options)
+
+
+# noinspection PyAttributeOutsideInit
+class JSONSerializer(PythonSerializer):
+    """Convert a queryset to JSON."""
+
+    def _init_options(self):
+        self.json_kwargs = self.options.copy()
+        self.json_kwargs.pop('stream', None)
+        self.json_kwargs.pop('fields', None)
+        if self.options.get('indent'):
+            # Prevent trailing spaces
+            self.json_kwargs['separators'] = (',', ': ')
+        self.json_kwargs.setdefault('cls', AnthillJSONEncoder)
+
+    def start_serialization(self):
+        self._init_options()
+        self.stream.write("[")
+
+    def end_serialization(self):
+        if self.options.get("indent"):
+            self.stream.write("\n")
+        self.stream.write("]")
+        if self.options.get("indent"):
+            self.stream.write("\n")
+
+    def end_object(self, obj):
+        indent = self.options.get("indent")
+        if not self.first:
+            self.stream.write(",")
+            if not indent:
+                self.stream.write(" ")
+        if indent:
+            self.stream.write("\n")
+        json.dump(self.get_dump_object(obj), self.stream, **self.json_kwargs)
+
+
+class XMLSerializer(PythonSerializer):
+    pass
+
+
 def get_serializer(fmt):
-    raise NotImplementedError
+    return get_serializers()[fmt]
+
+
+def get_serializers():
+    return {
+        'yaml': YAMLSerializer,
+        'json': JSONSerializer,
+        'xml': XMLSerializer,
+    }
 
 
 def serialize(fmt, queryset, **options):
@@ -98,4 +290,4 @@ def serialize(fmt, queryset, **options):
     """
     s = get_serializer(fmt)()
     s.serialize(queryset, **options)
-    return s.data
+    return s.getvalue()
