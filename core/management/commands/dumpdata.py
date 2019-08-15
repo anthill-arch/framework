@@ -29,6 +29,10 @@ AnthillSafeDumper.add_representer(collections.OrderedDict, AnthillSafeDumper.rep
 AnthillSafeDumper.add_representer(dict, AnthillSafeDumper.represent_ordered_dict)
 
 
+class SerializerDoesNotExist(KeyError):
+    """The requested serializer was not found."""
+
+
 class DumpData(Command):
     help = description = 'Output the contents of the database as a fixture of the given format.'
 
@@ -278,7 +282,10 @@ class XMLSerializer(PythonSerializer):
 
 
 def get_serializer(fmt):
-    return get_serializers()[fmt]
+    try:
+        return get_serializers()[fmt]
+    except KeyError:
+        raise SerializerDoesNotExist(fmt)
 
 
 def get_serializers():

@@ -31,6 +31,10 @@ class DeserializationError(Exception):
     """Something bad happened during deserialization."""
 
 
+class DeserializerDoesNotExist(KeyError):
+    """The requested deserializer was not found."""
+
+
 READ_STDIN = '-'
 
 
@@ -359,7 +363,10 @@ def get_deserializers(keys=False):
 
 
 def get_deserializer(fmt):
-    return get_deserializers()[fmt]
+    try:
+        return get_deserializers()[fmt]
+    except KeyError:
+        raise DeserializerDoesNotExist(fmt)
 
 
 def deserialize(fmt, stream_or_string, **options):
