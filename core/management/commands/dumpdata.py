@@ -1,6 +1,5 @@
 from anthill.framework.core.management import Command, Option, InvalidCommand
 from anthill.framework.utils.serializer import AnthillJSONEncoder
-from anthill.framework.apps.builder import app
 from io import StringIO
 import collections
 import decimal
@@ -62,6 +61,8 @@ class DumpData(Command):
             self.primary_keys = [pk.strip() for pk in pks.split(',')]
         else:
             self.primary_keys = []
+
+        from anthill.framework.apps.builder import app
 
         if not model_names:
             if self.primary_keys:
@@ -211,12 +212,17 @@ class PythonSerializer(BaseSerializer):
     def end_object(self, obj):
         self.objects.append(self.get_dump_object(obj))
 
-    # noinspection PyMethodMayBeStatic
     def get_dump_object(self, obj):
-        fields = obj.dump().data
+        schema = None
+        Model = obj.__class__
+        if self.selected_fields:
+            from anthill.framework.apps.builder import app
+            schema = app.get_model_schema(
+                Model, selected_fields=self.selected_fields)
+        fields = obj.dump(schema=schema).data
         del fields['id']
         return {
-            'model': obj.__class__.__name__,
+            'model': Model.__name__,
             'id': obj.id,
             'fields': fields
         }

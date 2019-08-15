@@ -23,7 +23,7 @@ class Model(ActiveRecordMixin, DefaultModel):
         try:
             model_schema = schema or getattr(self, '__marshmallow__')
         except AttributeError:
-            raise ValueError("Scheme class not configured")
+            raise ValueError("Scheme class not configured: %s" % self.__class__.__name__)
         return model_schema.dump(self)
 
     @classmethod
@@ -31,7 +31,7 @@ class Model(ActiveRecordMixin, DefaultModel):
         try:
             model_schema = schema or getattr(cls, '__marshmallow__')
         except AttributeError:
-            raise ValueError("Scheme class not configured")
+            raise ValueError("Scheme class not configured: %s" % cls.__name__)
         return model_schema(many=True).dump(objects)
 
     @classmethod

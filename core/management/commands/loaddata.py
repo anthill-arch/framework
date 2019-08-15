@@ -2,8 +2,6 @@ from anthill.framework.core.management import Command, Option, InvalidCommand
 from anthill.framework.utils.functional import cached_property
 from anthill.framework.core.exceptions import ImproperlyConfigured
 from anthill.framework.conf import settings
-from anthill.framework.apps.builder import app
-from anthill.framework.db import db
 import functools
 import glob
 import gzip
@@ -276,12 +274,14 @@ def humanize(dirname):
 
 def _get_model(model_name):
     """Look up a model from a "model_name" string."""
+    from anthill.framework.apps.builder import app
     model = app.get_model(model_name)
     if model is None:
         raise DeserializationError("Invalid model name: '%s'" % model_name)
 
 
 def build_instance(model_class, data):
+    from anthill.framework.db import db
     Serializer = getattr(model_class, '__marshmallow__', None)
     if Serializer is None:
         raise DeserializationError("Invalid model serializer: '%s'" % model_class.__name__)

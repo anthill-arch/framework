@@ -1,12 +1,12 @@
 from anthill.framework.utils.text import slugify, camel_case_to_spaces, class_name
 from anthill.framework.utils.module_loading import import_string
+from anthill.framework.utils.functional import cached_property
 from anthill.framework.conf import settings
 from marshmallow_sqlalchemy import ModelConversionError, ModelSchema, convert
 from sqlalchemy_utils import get_columns
 from sqlalchemy import event
 from urllib.parse import urlparse, urljoin
 from collections import defaultdict
-from functools import lru_cache
 from itertools import chain
 from _thread import get_ident
 import importlib
@@ -209,13 +209,11 @@ class Application:
             if hasattr(clazz, '__tablename__') and clazz.__tablename__ == tablename:
                 return clazz
 
-    @property
-    @lru_cache()
+    @cached_property
     def commands(self):
         return self.command_parser.parse(self.management_conf)
 
-    @property
-    @lru_cache()
+    @cached_property
     def routes(self):
         """Returns routes map."""
         from anthill.framework.utils.urls import include, to_urlspec
@@ -256,23 +254,27 @@ class Application:
     class ModelConverter(convert.ModelConverter):
         """Anthill model converter for marshmallow model schema."""
 
+    def get_model_schema(self, cls, selected_fields=None):
+        if hasattr(cls, '__tablename__'):
+            if cls.__name__.endswith('Schema'):
+                raise ModelConversionError(
+                    "For safety, get_model_schema can not be used when a "
+                    "Model class ends with 'Schema'")
+
+            class Meta:
+                model = cls
+                fields = selected_fields
+                model_converter = self.ModelConverter
+                sqla_session = self.db.session
+
+            schema_class_name = '%sSchema' % cls.__name__
+
+            return type(schema_class_name, (ModelSchema,), {'Meta': Meta})
+
     def update_models(self, models):
         def add_schema(cls):
-            if hasattr(cls, '__tablename__'):
-                if cls.__name__.endswith('Schema'):
-                    raise ModelConversionError(
-                        "For safety, setup_schema can not be used when a "
-                        "Model class ends with 'Schema'")
-
-                class Meta:
-                    model = cls
-                    model_converter = self.ModelConverter
-                    sqla_session = self.db.session
-
-                schema_class_name = '%sSchema' % cls.__name__
-
-                schema_class = type(schema_class_name, (ModelSchema,), {'Meta': Meta})
-
+            schema_class = self.get_model_schema(cls)
+            if schema_class is not None:
                 setattr(cls, '__marshmallow__', schema_class)
 
         def add_events(cls):
@@ -313,6 +315,7 @@ class Application:
         )
         make_versioned(user_cls=None, plugins=plugins)
 
+    # noinspection PyMethodMayBeStatic
     def post_setup_models(self, installed_models):
         import sqlalchemy as sa
         sa.orm.configure_mappers()
@@ -354,8 +357,7 @@ class Application:
         self.post_setup()
         logger.debug('Application setup finished.')
 
-    @property
-    @lru_cache()
+    @cached_property
     def service(self):
         """
         Returns an instance of service class ``self.service_class``.
