@@ -282,10 +282,10 @@ def _get_model(model_name):
 
 def build_instance(model_class, data):
     from anthill.framework.db import db
-    Serializer = getattr(model_class, '__marshmallow__', None)
-    if Serializer is None:
-        raise DeserializationError("Invalid model serializer: '%s'" % model_class.__name__)
-    obj = Serializer.load(data, session=db.session)
+    Schema = getattr(model_class, '__marshmallow__', None)
+    if Schema is None:
+        raise DeserializationError("Invalid model schema: '%s'" % model_class.__name__)
+    obj = Schema.load(data, session=db.session)
     return obj.data
 
 

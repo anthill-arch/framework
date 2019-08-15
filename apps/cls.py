@@ -254,16 +254,17 @@ class Application:
     class ModelConverter(convert.ModelConverter):
         """Anthill model converter for marshmallow model schema."""
 
-    def get_model_schema(self, cls, selected_fields=None):
+    def get_model_schema(self, cls, selected_fields=None, exclude_fields=None):
         if hasattr(cls, '__tablename__'):
             if cls.__name__.endswith('Schema'):
                 raise ModelConversionError(
-                    "For safety, get_model_schema can not be used when a "
+                    "For safety, ``get_model_schema`` can not be used when a "
                     "Model class ends with 'Schema'")
 
             class Meta:
                 model = cls
                 fields = selected_fields
+                exclude = exclude_fields
                 model_converter = self.ModelConverter
                 sqla_session = self.db.session
 
