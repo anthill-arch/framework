@@ -59,8 +59,8 @@ class DumpData(Command):
         self.indent = options['indent']
         self.excluded_models = options['exclude']
         self.output = options['output']
-        pks = options['primary_keys']
 
+        pks = options['primary_keys']
         if pks:
             self.primary_keys = [pk.strip() for pk in pks.split(',')]
         else:
@@ -95,7 +95,7 @@ class DumpData(Command):
                 serialize(
                     self.format, self.get_objects(), indent=indent,
                     stream=stream or self.stdout, progress_output=progress_output,
-                    object_count=object_count,
+                    object_count=object_count
                 )
             finally:
                 if stream:
@@ -165,7 +165,8 @@ class BaseSerializer:
             self.start_object(obj)
             self.end_object(obj)
             progress_bar.update(count)
-            self.first = self.first and False
+            if self.first:
+                self.first = False
 
         self.end_serialization()
 

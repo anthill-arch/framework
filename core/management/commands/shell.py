@@ -24,7 +24,6 @@ class Shell(Command):
                         The IPython shell can be turned off in command
                         line by passing the **--no-ipython** flag.
     """
-
     banner = ''
 
     help = description = 'Runs a Python shell inside application context.'
@@ -75,7 +74,6 @@ class Shell(Command):
         If no_bpython is False or use_bpython is True, then a BPython shell is run (if installed).
         If no_ipython is False or use_python is True then a IPython shell is run (if installed).
         """
-
         context = self.get_context()
 
         if not no_ptipython:

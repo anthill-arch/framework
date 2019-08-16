@@ -1,4 +1,7 @@
+from anthill.framework.core.mail import mail_admins, mail_managers, send_mail
 from anthill.framework.core.management import Command, Option
+from anthill.framework.utils import timezone
+import socket
 
 
 class SendTestEmail(Command):
@@ -16,10 +19,6 @@ class SendTestEmail(Command):
         return options
 
     def run(self, *args, **kwargs):
-        import socket
-        from anthill.framework.utils import timezone
-        from anthill.framework.core.mail import mail_admins, mail_managers, send_mail
-
         subject = 'Test email from %s on %s' % (socket.gethostname(), timezone.now())
 
         send_mail(

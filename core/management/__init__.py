@@ -423,9 +423,9 @@ class AppManager(BaseManager):
             from anthill.framework.db.management import MigrateCommand
             self.add_command("db", MigrateCommand)
         if "loaddata" not in self._commands:
-            self.add_command("loaddats", LoadData)
+            self.add_command("loaddata", LoadData)
         if "dumpdata" not in self._commands:
-            self.add_command("dump", DumpData)
+            self.add_command("dumpdata", DumpData)
 
         super(AppManager, self).add_default_commands()
 
