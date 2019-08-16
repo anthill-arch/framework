@@ -222,8 +222,7 @@ class PythonSerializer(BaseSerializer):
         Model = obj.__class__
         if self.selected_fields:
             from anthill.framework.apps.builder import app
-            schema = app.get_model_schema(
-                Model, selected_fields=self.selected_fields)
+            schema = app.get_model_schema(Model, selected_fields=self.selected_fields)
         fields = obj.dump(schema=schema).data
         del fields['id']
         return {
