@@ -34,36 +34,34 @@ class RequireDebugTrue(logging.Filter):
         return settings.DEBUG
 
 
-def get_user_logger(user, root_dir=USER_LOGGING_ROOT_DIR,
+def get_user_logger(user,
+                    root_dir=USER_LOGGING_ROOT_DIR,
                     max_file_size=USER_LOGGING_MAX_FILE_SIZE,
                     backup_count=USER_LOGGING_BACKUP_COUNT):
-
     username = 'anonymous' if isinstance(user, AnonymousUser) else user.username
-    logger = logging.getLogger('user.%s' % username)
+    logger = logging.getLogger('user.' + username)
 
-    handler_settings = {
-        'filename': os.path.join(root_dir, '%s.log' % username),
-        'maxBytes': max_file_size,
-        'backupCount': backup_count,
-    }
-    try:
-        handler = UserRotatingFileHandler(**handler_settings)
-    except FileNotFoundError:
-        logger.disabled = True
-        if not settings.DEBUG:
-            raise
-    else:
-        formatter_settings = {
-            'fmt': '[%(levelname)1.1s %(asctime)s %(module)s:%(lineno)d] %(message)s',
-            'datefmt': '%Y-%m-%d %H:%M:%S',
-        }
-        formatter = UserFormatter(**formatter_settings)
-
-        handler.setLevel(logging.INFO)
-        handler.setFormatter(formatter)
-        handler.addFilter(RequireDebugFalse)
-
-        if not logger.handlers:
+    if not logger.handlers:
+        if not os.path.isdir(root_dir):
+            os.makedirs(root_dir)
+        try:
+            handler = UserRotatingFileHandler(
+                filename=os.path.join(root_dir, username + '.log'),
+                maxBytes=max_file_size,
+                backupCount=backup_count
+            )
+        except FileNotFoundError:
+            logger.disabled = True
+            if not settings.DEBUG:
+                raise
+        else:
+            formatter = UserFormatter(
+                fmt='[%(levelname)1.1s %(asctime)s %(module)s:%(lineno)d] %(message)s',
+                datefmt='%Y-%m-%d %H:%M:%S'
+            )
+            handler.setFormatter(formatter)
+            handler.addFilter(RequireDebugFalse)
+            handler.setLevel(logging.INFO)
             logger.addHandler(handler)
 
     return logger

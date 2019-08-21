@@ -33,11 +33,11 @@ class TripItOAuth(BaseOAuth1):
         return {
             'id': dom.getElementsByTagName('Profile')[0].getAttribute('ref'),
             'name': dom.getElementsByTagName('public_display_name')[0]
-                .childNodes[0].data,
+                                    .childNodes[0].data,
             'screen_name': dom.getElementsByTagName('screen_name')[0]
-                .childNodes[0].data,
+                                    .childNodes[0].data,
             'email': dom.getElementsByTagName('is_primary')[0]
-                .parentNode
-                .getElementsByTagName('address')[0]
-                .childNodes[0].data
+                                    .parentNode
+                                        .getElementsByTagName('address')[0]
+                                            .childNodes[0].data
         }

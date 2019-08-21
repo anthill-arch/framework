@@ -36,7 +36,7 @@ class YahooOAuth(BaseOAuth1):
             last_name=response.get('familyName')
         )
         emails = [email for email in response.get('emails', [])
-                  if email.get('handle')]
+                        if email.get('handle')]
         emails.sort(key=lambda e: e.get('primary', False), reverse=True)
         return {'username': response.get('nickname'),
                 'email': emails[0]['handle'] if emails else '',
@@ -93,7 +93,7 @@ class YahooOAuth2(BaseOAuth2):
             last_name=response.get('familyName')
         )
         emails = [email for email in response.get('emails', [])
-                  if 'handle' in email]
+                        if 'handle' in email]
         emails.sort(key=lambda e: e.get('primary', False), reverse=True)
         email = emails[0]['handle'] if emails else response.get('guid', '')
         return {
@@ -107,14 +107,14 @@ class YahooOAuth2(BaseOAuth2):
     def user_data(self, access_token, *args, **kwargs):
         """Loads user data from service"""
         url = 'https://social.yahooapis.com/v1/user/{0}/profile?format=json' \
-            .format(kwargs['response']['xoauth_yahoo_guid'])
+                .format(kwargs['response']['xoauth_yahoo_guid'])
         return self.get_json(url, headers={
             'Authorization': 'Bearer {0}'.format(access_token)
         }, method='GET')['profile']
 
     @handle_http_errors
     def auth_complete(self, *args, **kwargs):
-        """Completes loging process, must return user instance"""
+        """Completes login process, must return user instance"""
         self.process_error(self.data)
         response = self.request_access_token(
             self.ACCESS_TOKEN_URL,

@@ -1,11 +1,10 @@
 from anthill.framework.handlers import RequestHandler
-from anthill.framework.auth.social.core.actions import (
-    do_auth, do_complete, do_disconnect
-)
 from anthill.framework.auth import REDIRECT_FIELD_NAME
 from anthill.framework.conf import settings
-from anthill.framework.auth.social.core.utils import setting_name
+from .core.actions import do_auth, do_complete, do_disconnect
+from .core.utils import setting_name
 from .utils import psa
+
 
 NAMESPACE = getattr(settings, setting_name('URL_NAMESPACE'), None) or 'social'
 
@@ -24,6 +23,7 @@ class BaseHandler(RequestHandler):
 
 
 class AuthHandler(BaseHandler):
+    """Authentication start handler."""
     async def get(self, backend):
         await self._auth(backend)
 
@@ -37,7 +37,6 @@ class AuthHandler(BaseHandler):
 
 class CompleteHandler(BaseHandler):
     """Authentication complete handler."""
-
     async def get(self, backend):
         await self._complete(backend)
 
@@ -56,7 +55,6 @@ class CompleteHandler(BaseHandler):
 
 class DisconnectHandler(BaseHandler):
     """Disconnects given backend from current logged in user."""
-
     async def post(self, backend, association_id=None):
         await do_disconnect(
             self.backend,

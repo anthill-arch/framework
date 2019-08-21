@@ -1,7 +1,6 @@
 """Tornado SQLAlchemy ORM models for Social Auth."""
 
 from sqlalchemy.orm import relationship, backref
-from anthill.framework.auth.social.core.utils import setting_name
 from social_sqlalchemy.storage import (
     SQLAlchemyUserMixin,
     SQLAlchemyAssociationMixin,
@@ -13,6 +12,7 @@ from social_sqlalchemy.storage import (
 from anthill.framework.db import db
 from anthill.framework.auth import get_user_model
 from anthill.framework.conf import settings
+from .core.utils import setting_name
 
 
 class TornadoStorage(BaseSQLAlchemyStorage):

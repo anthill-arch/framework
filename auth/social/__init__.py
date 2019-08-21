@@ -1,14 +1,10 @@
-# Originated from https://github.com/python-social-auth/social-app-tornado.git
-__version__ = '1.0.0'
-
-from anthill.framework.auth.social.core.backends.base import BaseAuth
+from .core.backends.base import BaseAuth
 
 
-# django.contrib.auth.load_backend() will import and instanciate the
+# anthill.framework.auth.load_backend() will import and instanciate the
 # authentication backend ignoring the possibility that it might
 # require more arguments. Here we set a monkey patch to
-# BaseAuth.__init__ to ignore the mandatory strategy argument and load
-# it.
+# BaseAuth.__init__ to ignore the mandatory strategy argument and load it.
 
 
 def baseauth_init_workaround(original_init):

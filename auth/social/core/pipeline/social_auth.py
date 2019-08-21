@@ -19,16 +19,14 @@ def social_user(backend, uid, user=None, *args, **kwargs):
     social = backend.strategy.storage.user.get_social_auth(provider, uid)
     if social:
         if user and social.user != user:
-            msg = 'This {0} account is already in use.'.format(provider)
+            msg = 'This account is already in use.'
             raise AuthAlreadyAssociated(backend, msg)
         elif not user:
             user = social.user
-    return {
-        'social': social,
-        'user': user,
-        'is_new': user is None,
-        'new_association': social is None
-    }
+    return {'social': social,
+            'user': user,
+            'is_new': user is None,
+            'new_association': social is None}
 
 
 def associate_user(backend, uid, user=None, social=None, *args, **kwargs):
@@ -45,11 +43,9 @@ def associate_user(backend, uid, user=None, social=None, *args, **kwargs):
             #   https://github.com/omab/django-social-auth/issues/131
             return social_user(backend, uid, user, *args, **kwargs)
         else:
-            return {
-                'social': social,
-                'user': social.user,
-                'new_association': True
-            }
+            return {'social': social,
+                    'user': social.user,
+                    'new_association': True}
 
 
 def associate_by_email(backend, details, user=None, *args, **kwargs):
@@ -59,7 +55,8 @@ def associate_by_email(backend, details, user=None, *args, **kwargs):
     This pipeline entry is not 100% secure unless you know that the providers
     enabled enforce email verification on their side, otherwise a user can
     attempt to take over another user account by using the same (not validated)
-    email address on some provider. This pipeline entry is disabled by default.
+    email address on some provider.  This pipeline entry is disabled by
+    default.
     """
     if user:
         return None
@@ -74,17 +71,18 @@ def associate_by_email(backend, details, user=None, *args, **kwargs):
             return None
         elif len(users) > 1:
             raise AuthException(
-                backend, 'The given email address is associated with another account')
+                backend,
+                'The given email address is associated with another account'
+            )
         else:
-            return {
-                'user': users[0],
-                'is_new': False
-            }
+            return {'user': users[0],
+                    'is_new': False}
 
 
 def load_extra_data(backend, details, response, uid, user, *args, **kwargs):
-    social = (kwargs.get('social') or
-              backend.strategy.storage.user.get_social_auth(backend.name, uid))
+    social = kwargs.get('social') or \
+             backend.strategy.storage.user.get_social_auth(backend.name, uid)
     if social:
-        extra_data = backend.extra_data(user, uid, response, details, *args, **kwargs)
+        extra_data = backend.extra_data(user, uid, response, details,
+                                        *args, **kwargs)
         social.set_extra_data(extra_data)

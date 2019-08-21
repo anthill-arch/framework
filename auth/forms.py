@@ -23,14 +23,14 @@ class AuthenticationForm(Form):
             self.confirm_login_allowed(user)
         return user
 
-    def get_credentials(self):
+    def get_credentials(self) -> dict:
         return {
             'username': self.username.data,
             'password': self.password.data
         }
 
     # noinspection PyMethodMayBeStatic
-    def confirm_login_allowed(self, user):
+    def confirm_login_allowed(self, user) -> None:
         """
         Controls whether the given User may log in. This is a policy setting,
         independent of end-user authentication. This default behavior is to

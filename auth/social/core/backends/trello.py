@@ -6,6 +6,7 @@ from .oauth import BaseOAuth1
 
 
 class TrelloOAuth(BaseOAuth1):
+
     """Trello OAuth authentication backend"""
     name = 'trello'
     ID_KEY = 'username'

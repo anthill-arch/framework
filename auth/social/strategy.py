@@ -1,12 +1,12 @@
-from .core.strategy import BaseStrategy, BaseTemplateStrategy
-from .core.utils import build_absolute_uri
-from tornado.template import Loader, Template
 from anthill.framework.utils.crypto import get_random_string
 from anthill.framework.utils.encoding import force_text
 from anthill.framework.utils.functional import Promise
 from anthill.framework.auth import authenticate
 from anthill.framework.conf import settings
 from anthill.framework.utils.asynchronous import as_future
+from .core.strategy import BaseStrategy, BaseTemplateStrategy
+from .core.utils import build_absolute_uri
+from tornado.template import Loader, Template
 import six
 import os
 
@@ -87,14 +87,6 @@ class TornadoStrategy(BaseStrategy):
                 '{0}://{1}'.format(self.request.protocol, self.request.host), path)
         else:
             return path
-
-    async def authenticate(self, backend, *args, **kwargs):
-        """Trigger the authentication mechanism tied to the current framework."""
-        kwargs['strategy'] = self
-        kwargs['storage'] = self.storage
-        kwargs['backend'] = backend
-        args, kwargs = self.clean_authenticate_args(*args, **kwargs)
-        return await backend.authenticate(*args, **kwargs)
 
     def get_language(self):
         """Return current language."""

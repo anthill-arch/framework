@@ -6,10 +6,10 @@ from oauthlib.oauth1 import SIGNATURE_TYPE_AUTH_HEADER
 from six.moves.urllib_parse import urlencode, unquote
 
 from ..utils import url_add_parameters, parse_qs, handle_http_errors, \
-    constant_time_compare
+                    constant_time_compare
 from ..exceptions import AuthFailed, AuthCanceled, AuthUnknownError, \
-    AuthMissingParameter, AuthStateMissing, \
-    AuthStateForbidden, AuthTokenError
+                         AuthMissingParameter, AuthStateMissing, \
+                         AuthStateForbidden, AuthTokenError
 from .base import BaseAuth
 
 
@@ -142,7 +142,7 @@ class OAuthAuth(BaseAuth):
             params = self.revoke_token_params(token, uid)
             headers = self.revoke_token_headers(token, uid)
             data = urlencode(params) if self.REVOKE_TOKEN_METHOD != 'GET' \
-                else None
+                                     else None
             response = self.request(url, params=params, headers=headers,
                                     data=data, method=self.REVOKE_TOKEN_METHOD)
             return self.process_revoke_token_response(response)
@@ -184,7 +184,7 @@ class BaseOAuth1(OAuthAuth):
         return self.do_auth(access_token, *args, **kwargs)
 
     @handle_http_errors
-    def do_auth(self, access_token, *args, **kwargs):
+    async def do_auth(self, access_token, *args, **kwargs):
         """Finish the auth process once the access_token was retrieved"""
         if not isinstance(access_token, dict):
             access_token = parse_qs(access_token)
@@ -192,7 +192,7 @@ class BaseOAuth1(OAuthAuth):
         if data is not None and 'access_token' not in data:
             data['access_token'] = access_token
         kwargs.update({'response': data, 'backend': self})
-        return self.strategy.authenticate(*args, **kwargs)
+        return await self.strategy.authenticate(*args, **kwargs)
 
     def get_unauthorized_token(self):
         name = self.name + self.UNATHORIZED_TOKEN_SUFIX
@@ -374,10 +374,10 @@ class BaseOAuth2(OAuthAuth):
 
     def process_error(self, data):
         if data.get('error'):
-            if data['error'] == 'denied' or data['error'] == 'access_denied':
+            if 'denied' in data['error'] or 'cancelled' in data['error']:
                 raise AuthCanceled(self, data.get('error_description', ''))
             raise AuthFailed(self, data.get('error_description') or
-                             data['error'])
+                                   data['error'])
         elif 'denied' in data:
             raise AuthCanceled(self, data['denied'])
 
@@ -405,7 +405,7 @@ class BaseOAuth2(OAuthAuth):
                             *args, **kwargs)
 
     @handle_http_errors
-    def do_auth(self, access_token, *args, **kwargs):
+    async def do_auth(self, access_token, *args, **kwargs):
         """Finish the auth process once the access_token was retrieved"""
         data = self.user_data(access_token, *args, **kwargs)
         response = kwargs.get('response') or {}
@@ -413,7 +413,7 @@ class BaseOAuth2(OAuthAuth):
         if 'access_token' not in response:
             response['access_token'] = access_token
         kwargs.update({'response': response, 'backend': self})
-        return self.strategy.authenticate(*args, **kwargs)
+        return await self.strategy.authenticate(*args, **kwargs)
 
     def refresh_token_params(self, token, *args, **kwargs):
         client_id, client_secret = self.get_key_and_secret()

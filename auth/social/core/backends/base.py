@@ -1,12 +1,11 @@
-import time
-
 from requests import request, ConnectionError
-
 from ..utils import SSLHttpAdapter, module_member, parse_qs, user_agent
 from ..exceptions import AuthFailed
+import time
+import inspect
 
 
-class BaseAuth(object):
+class BaseAuth:
     """A authentication backend that authenticates the user based on
     the provider response"""
     name = ''  # provider name, it's stored in database
@@ -30,8 +29,8 @@ class BaseAuth(object):
         """Return setting value from strategy"""
         return self.strategy.setting(name, default=default, backend=self)
 
-    def start(self):
-        if self.uses_redirect():
+    async def start(self):
+        if await self.uses_redirect():
             return self.strategy.redirect(self.auth_url())
         else:
             return self.strategy.html(self.auth_html())
@@ -48,7 +47,7 @@ class BaseAuth(object):
         raise NotImplementedError('Implement in subclass')
 
     def auth_complete(self, *args, **kwargs):
-        """Completes loging process, must return user instance"""
+        """Completes login process, must return user instance"""
         raise NotImplementedError('Implement in subclass')
 
     def process_error(self, data):
@@ -56,7 +55,7 @@ class BaseAuth(object):
         Call this method on any override of auth_complete."""
         pass
 
-    def authenticate(self, *args, **kwargs):
+    async def authenticate(self, *args, **kwargs):
         """Authenticate user using social credentials
 
         Authentication is made if this is the correct backend, backend
@@ -68,7 +67,7 @@ class BaseAuth(object):
         # don't match the username/password calling conventions of
         # authenticate.
         if 'backend' not in kwargs or kwargs['backend'].name != self.name or \
-                'strategy' not in kwargs or 'response' not in kwargs:
+           'strategy' not in kwargs or 'response' not in kwargs:
             return None
 
         self.strategy = kwargs.get('strategy') or self.strategy
@@ -77,10 +76,10 @@ class BaseAuth(object):
         kwargs.setdefault('is_new', False)
         pipeline = self.strategy.get_pipeline(self)
         args, kwargs = self.strategy.clean_authenticate_args(*args, **kwargs)
-        return self.pipeline(pipeline, *args, **kwargs)
+        return await self.pipeline(pipeline, *args, **kwargs)
 
-    def pipeline(self, pipeline, pipeline_index=0, *args, **kwargs):
-        out = self.run_pipeline(pipeline, pipeline_index, *args, **kwargs)
+    async def pipeline(self, pipeline, pipeline_index=0, *args, **kwargs):
+        out = await self.run_pipeline(pipeline, pipeline_index, *args, **kwargs)
         if not isinstance(out, dict):
             return out
         user = out.get('user')
@@ -89,13 +88,13 @@ class BaseAuth(object):
             user.is_new = out.get('is_new')
         return user
 
-    def disconnect(self, *args, **kwargs):
+    async def disconnect(self, *args, **kwargs):
         pipeline = self.strategy.get_disconnect_pipeline(self)
         kwargs['name'] = self.name
         kwargs['user_storage'] = self.strategy.storage.user
-        return self.run_pipeline(pipeline, *args, **kwargs)
+        return await self.run_pipeline(pipeline, *args, **kwargs)
 
-    def run_pipeline(self, pipeline, pipeline_index=0, *args, **kwargs):
+    async def run_pipeline(self, pipeline, pipeline_index=0, *args, **kwargs):
         out = kwargs.copy()
         out.setdefault('strategy', self.strategy)
         out.setdefault('backend', out.pop(self.name, None) or self)
@@ -103,14 +102,17 @@ class BaseAuth(object):
         out.setdefault('details', {})
 
         if not isinstance(pipeline_index, int) or \
-                pipeline_index < 0 or \
-                pipeline_index >= len(pipeline):
+           pipeline_index < 0 or \
+           pipeline_index >= len(pipeline):
             pipeline_index = 0
 
         for idx, name in enumerate(pipeline[pipeline_index:]):
             out['pipeline_index'] = pipeline_index + idx
             func = module_member(name)
-            result = func(*args, **out) or {}
+            if inspect.iscoroutinefunction(func):
+                result = await func(*args, **out) or {}
+            else:
+                result = func(*args, **out) or {}
             if not isinstance(result, dict):
                 return result
             out.update(result)
@@ -132,7 +134,6 @@ class BaseAuth(object):
                 entry = (entry,)
             size = len(entry)
             if size >= 1 and size <= 3:
-            # if 1 <= size <= 3:
                 if size == 3:
                     name, alias, discard = entry
                 elif size == 2:
@@ -194,26 +195,24 @@ class BaseAuth(object):
         """
         return self.strategy.get_user(user_id)
 
-    def continue_pipeline(self, partial):
+    async def continue_pipeline(self, partial):
         """Continue previous halted pipeline"""
-        return self.strategy.authenticate(self,
-                                          pipeline_index=partial.next_step,
-                                          *partial.args,
-                                          **partial.kwargs)
+        return await self.strategy.authenticate(self,
+                                                pipeline_index=partial.next_step,
+                                                *partial.args,
+                                                **partial.kwargs)
 
     def auth_extra_arguments(self):
         """Return extra arguments needed on auth process. The defaults can be
         overridden by GET parameters."""
         extra_arguments = self.setting('AUTH_EXTRA_ARGUMENTS', {}).copy()
         extra_arguments.update((key, self.data[key]) for key in extra_arguments
-                               if key in self.data)
+                                    if key in self.data)
         return extra_arguments
 
     async def uses_redirect(self):
-        """
-        Return True if this provider uses redirect url method,
-        otherwise return false.
-        """
+        """Return True if this provider uses redirect url method,
+        otherwise return false."""
         return True
 
     def request(self, url, method='GET', *args, **kwargs):
@@ -221,7 +220,7 @@ class BaseAuth(object):
         if self.setting('VERIFY_SSL') is not None:
             kwargs.setdefault('verify', self.setting('VERIFY_SSL'))
         kwargs.setdefault('timeout', self.setting('REQUESTS_TIMEOUT') or
-                          self.setting('URLOPEN_TIMEOUT'))
+                                     self.setting('URLOPEN_TIMEOUT'))
         if self.SEND_USER_AGENT and 'User-Agent' not in kwargs['headers']:
             kwargs['headers']['User-Agent'] = self.setting('USER_AGENT') or \
                                               user_agent()

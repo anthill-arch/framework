@@ -6,6 +6,7 @@ from .oauth import BaseOAuth1
 
 
 class ZoteroOAuth(BaseOAuth1):
+
     """Zotero OAuth authorization mechanism"""
     name = 'zotero'
     AUTHORIZATION_URL = 'https://www.zotero.org/oauth/authorize'

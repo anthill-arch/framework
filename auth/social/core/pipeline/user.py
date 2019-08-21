@@ -1,6 +1,6 @@
+from ..utils import slugify, module_member
 from uuid import uuid4
 
-from ..utils import slugify, module_member
 
 USER_FIELDS = ['username', 'email']
 
@@ -51,7 +51,8 @@ def get_username(strategy, details, backend, user=None, *args, **kwargs):
         # as base but adding a unique hash at the end. Original
         # username is cut to avoid any field max_length.
         # The final_username may be empty and will skip the loop.
-        while not final_username or storage.user.user_exists(username=final_username):
+        while not final_username or \
+              storage.user.user_exists(username=final_username):
             username = short_username + uuid4().hex[:uuid_length]
             final_username = slug_func(clean_func(username[:max_length]))
     else:
@@ -86,7 +87,7 @@ def user_details(strategy, details, user=None, *args, **kwargs):
     # Update user model attributes with the new data sent by the current
     # provider. Update on some attributes is disabled by default, for
     # example username and id fields. It's also possible to disable update
-    # on fields defined in SOCIAL_AUTH_PROTECTED_FIELDS.
+    # on fields defined in SOCIAL_AUTH_PROTECTED_USER_FIELDS.
     for name, value in details.items():
         if value is None or not hasattr(user, name) or name in protected:
             continue

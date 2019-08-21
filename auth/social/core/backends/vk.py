@@ -45,7 +45,7 @@ class VKontakteOpenAPI(BaseAuth):
         local_html = self.setting('LOCAL_HTML', 'vkontakte.html')
         return self.strategy.render_html(tpl=local_html, context=ctx)
 
-    def auth_complete(self, *args, **kwargs):
+    async def auth_complete(self, *args, **kwargs):
         """Performs check of authentication in VKontakte, returns User if
         succeeded"""
         session_value = self.strategy.session_get(
@@ -56,7 +56,7 @@ class VKontakteOpenAPI(BaseAuth):
 
         mapping = parse_qs(session_value)
         check_str = ''.join(item + '=' + mapping[item]
-                            for item in ['expire', 'mid', 'secret', 'sid'])
+                                for item in ['expire', 'mid', 'secret', 'sid'])
 
         key, secret = self.get_key_and_secret()
         hash = md5((check_str + secret).encode('utf-8')).hexdigest()
@@ -65,7 +65,7 @@ class VKontakteOpenAPI(BaseAuth):
 
         kwargs.update({'backend': self,
                        'response': self.user_data(mapping['mid'])})
-        return self.strategy.authenticate(*args, **kwargs)
+        return await self.strategy.authenticate(*args, **kwargs)
 
     def uses_redirect(self):
         """VK.com does not require visiting server url in order
@@ -127,7 +127,7 @@ class VKAppOAuth2(VKOAuth2):
     """VK.com Application Authentication support"""
     name = 'vk-app'
 
-    def auth_complete(self, *args, **kwargs):
+    async def auth_complete(self, *args, **kwargs):
         required_params = ('is_app_user', 'viewer_id', 'access_token',
                            'api_id')
         if not all(param in self.data for param in required_params):
@@ -169,7 +169,7 @@ class VKAppOAuth2(VKOAuth2):
             }
         }
         auth_data['response'].update(json.loads(auth_data['request']['api_result'])['response'][0])
-        return self.strategy.authenticate(*args, **auth_data)
+        return await self.strategy.authenticate(*args, **auth_data)
 
 
 def vk_api(backend, method, data):

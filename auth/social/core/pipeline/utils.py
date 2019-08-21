@@ -1,16 +1,17 @@
 import six
 
+
 SERIALIZABLE_TYPES = (dict, list, tuple, set, bool, type(None)) + \
                      six.integer_types + six.string_types + \
                      (six.text_type, six.binary_type,)
 
 
 def is_dict_type(value):
-    """Treat any dict, MergeDict, MultiDict instance as dict type."""
+    """Treat any dict, MergeDict, MultiDict instance as dict type"""
     # Check by class name to avoid importing Django MergeDict or
     # Werkzeug MultiDict
     return isinstance(value, dict) or \
-           value.__class__.__name__ in ('MergeDict', 'MultiDict')
+        value.__class__.__name__ in ('MergeDict', 'MultiDict')
 
 
 def partial_prepare(strategy, backend, next_step, user=None, social=None,
@@ -22,7 +23,7 @@ def partial_prepare(strategy, backend, next_step, user=None, social=None,
         'uid': kwargs.get('uid'),
         'is_new': kwargs.get('is_new') or False,
         'new_association': kwargs.get('new_association') or False,
-        'user': user and user.id or None,
+        'user': hasattr(user, 'id') and user.id or None,
         'social': social and {
             'provider': social.provider,
             'uid': social.uid

@@ -77,7 +77,11 @@ class AzureADOAuth2(BaseOAuth2):
 
     def user_data(self, access_token, *args, **kwargs):
         response = kwargs.get('response')
-        id_token = response.get('id_token')
+        if response and response.get('id_token'):
+            id_token = response.get('id_token')
+        else:
+            id_token = access_token
+            
         try:
             decoded_id_token = jwt_decode(id_token, verify=False)
         except (DecodeError, ExpiredSignature) as de:
@@ -97,7 +101,7 @@ class AzureADOAuth2(BaseOAuth2):
         """Return access_token and extra defined names to store in
         extra_data field"""
         data = super(AzureADOAuth2, self).extra_data(user, uid, response,
-                                                     details, *args, **kwargs)
+            details, *args, **kwargs)
         data['resource'] = self.setting('RESOURCE')
         return data
 

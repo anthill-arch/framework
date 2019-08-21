@@ -11,8 +11,11 @@ from ..utils import url_add_parameters, cache
 from .base import BaseAuth
 from .oauth import BaseOAuth2
 from ..exceptions import AuthException, AuthFailed, AuthCanceled, \
-    AuthUnknownError, AuthMissingParameter, \
-    AuthTokenError
+                         AuthUnknownError, AuthMissingParameter, \
+                         AuthTokenError
+
+from anthill.framework.utils.asynchronous import as_future
+
 
 # OpenID configuration
 OLD_AX_ATTRS = [
@@ -71,7 +74,7 @@ class OpenIdAuth(BaseAuth):
             resp = sreg.SRegResponse.fromSuccessResponse(response)
             if resp:
                 values.update((alias, resp.get(name) or '')
-                              for name, alias in sreg_names)
+                                    for name, alias in sreg_names)
 
         # Use Attribute Exchange attributes if provided
         if ax_names:
@@ -140,6 +143,7 @@ class OpenIdAuth(BaseAuth):
         return_to = self.strategy.absolute_uri(self.redirect_uri)
         return openid_request.redirectURL(self.trust_root(), return_to)
 
+    @as_future
     def auth_html(self):
         """Return auth HTML returned by service"""
         openid_request = self.setup_request(self.auth_extra_arguments())
@@ -153,27 +157,27 @@ class OpenIdAuth(BaseAuth):
         return self.setting('OPENID_TRUST_ROOT') or \
                self.strategy.absolute_uri('/')
 
-    def continue_pipeline(self, partial):
+    async def continue_pipeline(self, partial):
         """Continue previous halted pipeline"""
         response = self.consumer().complete(dict(self.data.items()),
                                             self.strategy.absolute_uri(
                                                 self.redirect_uri
                                             ))
-        return self.strategy.authenticate(self,
-                                          response=response,
-                                          pipeline_index=partial.next_step,
-                                          *partial.args,
-                                          **partial.kwargs)
+        return await self.strategy.authenticate(self,
+                                                response=response,
+                                                pipeline_index=partial.next_step,
+                                                *partial.args,
+                                                **partial.kwargs)
 
-    def auth_complete(self, *args, **kwargs):
+    async def auth_complete(self, *args, **kwargs):
         """Complete auth process"""
         response = self.consumer().complete(dict(self.data.items()),
                                             self.strategy.absolute_uri(
                                                 self.redirect_uri
                                             ))
         self.process_error(response)
-        return self.strategy.authenticate(self, response=response,
-                                          *args, **kwargs)
+        return await self.strategy.authenticate(self, response=response,
+                                                *args, **kwargs)
 
     def process_error(self, data):
         if not data:
@@ -234,6 +238,7 @@ class OpenIdAuth(BaseAuth):
     def create_consumer(self, store=None):
         return Consumer(self.strategy.openid_session_dict(SESSION_NAME), store)
 
+    @as_future
     def uses_redirect(self):
         """Return true if openid request will be handled with redirect or
         HTML content will be returned.
@@ -244,7 +249,7 @@ class OpenIdAuth(BaseAuth):
         """Return openid request"""
         try:
             return self.consumer().begin(url_add_parameters(self.openid_url(),
-                                                            params))
+                                         params))
         except DiscoveryFailure as err:
             raise AuthException(self, 'OpenID discovery error: {0}'.format(
                 err

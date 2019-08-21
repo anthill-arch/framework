@@ -1,8 +1,8 @@
 from ..exceptions import NotAllowedToDisconnect
 
 
-def allowed_to_disconnect(strategy, user, name, user_storage, association_id=None,
-                          *args, **kwargs):
+def allowed_to_disconnect(strategy, user, name, user_storage,
+                          association_id=None, *args, **kwargs):
     if not user_storage.allowed_to_disconnect(user, name, association_id):
         raise NotAllowedToDisconnect()
 

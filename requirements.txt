@@ -9,7 +9,7 @@ WTForms
 WTForms-Alchemy
 marshmallow
 marshmallow-sqlalchemy
-python-social-auth
+social-auth-core
 social-auth-storage-sqlalchemy
 pyjwkest
 geoip2

@@ -1,6 +1,6 @@
 import jwt
 
-from .oauth import BaseOAuth2
+from social_core.backends.oauth import BaseOAuth2
 
 
 class KeycloakOAuth2(BaseOAuth2):  # pylint: disable=abstract-method

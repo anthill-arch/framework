@@ -1,18 +1,15 @@
-"""Models mixins for Social Auth."""
+"""Models mixins for Social Auth"""
+from openid.association import Association as OpenIdAssociation
+from .exceptions import MissingBackend
+from .backends.utils import get_backend
+from datetime import datetime, timedelta
 import re
 import time
 import base64
 import uuid
 import warnings
-
-from datetime import datetime, timedelta
-
 import six
 
-from openid.association import Association as OpenIdAssociation
-
-from .exceptions import MissingBackend
-from .backends.utils import get_backend
 
 NO_ASCII_REGEX = re.compile(r'[^\x00-\x7F]+')
 NO_SPECIAL_REGEX = re.compile(r'[^\w.@+_-]+', re.UNICODE)
@@ -40,7 +37,7 @@ class UserMixin:
 
     @property
     def access_token(self):
-        """Return access_token stored in extra_data or None."""
+        """Return access_token stored in extra_data or None"""
         return self.extra_data.get('access_token')
 
     @property
@@ -63,8 +60,7 @@ class UserMixin:
                 self.save()
 
     def expiration_timedelta(self):
-        """
-        Return provider session live seconds. Returns a timedelta ready to
+        """Return provider session live seconds. Returns a timedelta ready to
         use with session.set_expiry().
 
         If provider returns a timestamp instead of session seconds to live, the
@@ -99,10 +95,10 @@ class UserMixin:
         return self.expiration_timedelta()
 
     def access_token_expired(self):
-        """Return true / false if access token is already expired."""
+        """Return true / false if access token is already expired"""
         expiration = self.expiration_timedelta()
         return expiration and \
-               expiration.total_seconds() <= self.ACCESS_TOKEN_EXPIRED_THRESHOLD
+            expiration.total_seconds() <= self.ACCESS_TOKEN_EXPIRED_THRESHOLD
 
     def get_access_token(self, strategy):
         """Returns a valid access token."""
@@ -121,41 +117,40 @@ class UserMixin:
 
     @classmethod
     def clean_username(cls, value):
-        """Clean username removing any unsupported character."""
+        """Clean username removing any unsupported character"""
         value = NO_ASCII_REGEX.sub('', value)
         value = NO_SPECIAL_REGEX.sub('', value)
         return value
 
     @classmethod
     def changed(cls, user):
-        """The given user instance is ready to be saved."""
+        """The given user instance is ready to be saved"""
         raise NotImplementedError('Implement in subclass')
 
     @classmethod
     def get_username(cls, user):
-        """Return the username for given user."""
+        """Return the username for given user"""
         raise NotImplementedError('Implement in subclass')
 
     @classmethod
     def user_model(cls):
-        """Return the user model."""
+        """Return the user model"""
         raise NotImplementedError('Implement in subclass')
 
     @classmethod
     def username_max_length(cls):
-        """Return the max length for username."""
+        """Return the max length for username"""
         raise NotImplementedError('Implement in subclass')
 
     @classmethod
     def allowed_to_disconnect(cls, user, backend_name, association_id=None):
-        """
-        Return if it's safe to disconnect the social account for the given user.
-        """
+        """Return if it's safe to disconnect the social account for the
+        given user"""
         raise NotImplementedError('Implement in subclass')
 
     @classmethod
     def disconnect(cls, entry):
-        """Disconnect the social account for the given user."""
+        """Disconnect the social account for the given user"""
         raise NotImplementedError('Implement in subclass')
 
     @classmethod
@@ -168,49 +163,49 @@ class UserMixin:
 
     @classmethod
     def create_user(cls, *args, **kwargs):
-        """Create a user instance."""
+        """Create a user instance"""
         raise NotImplementedError('Implement in subclass')
 
     @classmethod
     def get_user(cls, pk):
-        """Return user instance for given id."""
+        """Return user instance for given id"""
         raise NotImplementedError('Implement in subclass')
 
     @classmethod
     def get_users_by_email(cls, email):
-        """Return users instances for given email address."""
+        """Return users instances for given email address"""
         raise NotImplementedError('Implement in subclass')
 
     @classmethod
     def get_social_auth(cls, provider, uid):
-        """Return UserSocialAuth for given provider and uid."""
+        """Return UserSocialAuth for given provider and uid"""
         raise NotImplementedError('Implement in subclass')
 
     @classmethod
     def get_social_auth_for_user(cls, user, provider=None, id=None):
-        """Return all the UserSocialAuth instances for given user."""
+        """Return all the UserSocialAuth instances for given user"""
         raise NotImplementedError('Implement in subclass')
 
     @classmethod
     def create_social_auth(cls, user, uid, provider):
-        """Create a UserSocialAuth instance for given user."""
+        """Create a UserSocialAuth instance for given user"""
         raise NotImplementedError('Implement in subclass')
 
 
 class NonceMixin:
-    """One use numbers."""
+    """One use numbers"""
     server_url = ''
     timestamp = 0
     salt = ''
 
     @classmethod
     def use(cls, server_url, timestamp, salt):
-        """Create a Nonce instance."""
+        """Create a Nonce instance"""
         raise NotImplementedError('Implement in subclass')
 
 
 class AssociationMixin:
-    """OpenId account association."""
+    """OpenId account association"""
     server_url = ''
     handle = ''
     secret = ''
@@ -239,17 +234,17 @@ class AssociationMixin:
 
     @classmethod
     def store(cls, server_url, association):
-        """Create an Association instance."""
+        """Create an Association instance"""
         raise NotImplementedError('Implement in subclass')
 
     @classmethod
     def get(cls, *args, **kwargs):
-        """Get an Association instance."""
+        """Get an Association instance"""
         raise NotImplementedError('Implement in subclass')
 
     @classmethod
     def remove(cls, ids_to_delete):
-        """Remove an Association instance."""
+        """Remove an Association instance"""
         raise NotImplementedError('Implement in subclass')
 
 
@@ -341,5 +336,5 @@ class BaseStorage:
 
     @classmethod
     def is_integrity_error(cls, exception):
-        """Check if given exception flags an integrity error in the DB."""
+        """Check if given exception flags an integrity error in the DB"""
         raise NotImplementedError('Implement in subclass')

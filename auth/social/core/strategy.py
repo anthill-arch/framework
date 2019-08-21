@@ -1,11 +1,10 @@
-import time
-import random
-import hashlib
-
 from .utils import setting_name, module_member, PARTIAL_TOKEN_SESSION_NAME
 from .store import OpenIdStore, OpenIdSessionWrapper
 from .pipeline import DEFAULT_AUTH_PIPELINE, DEFAULT_DISCONNECT_PIPELINE
 from .pipeline.utils import partial_load, partial_store, partial_prepare
+import hashlib
+import time
+import random
 
 
 class BaseTemplateStrategy:
@@ -28,7 +27,7 @@ class BaseTemplateStrategy:
         raise NotImplementedError('Implement in subclass')
 
 
-class BaseStrategy(object):
+class BaseStrategy:
     ALLOWED_CHARS = 'abcdefghijklmnopqrstuvwxyz' \
                     'ABCDEFGHIJKLMNOPQRSTUVWXYZ' \
                     '0123456789'
@@ -102,7 +101,10 @@ class BaseStrategy(object):
 
     def get_disconnect_pipeline(self, backend=None):
         return self.setting(
-            'DISCONNECT_PIPELINE', DEFAULT_DISCONNECT_PIPELINE, backend)
+            'DISCONNECT_PIPELINE',
+            DEFAULT_DISCONNECT_PIPELINE,
+            backend
+        )
 
     def random_string(self, length=12, chars=ALLOWED_CHARS):
         # Implementation borrowed from django 1.4
@@ -121,7 +123,7 @@ class BaseStrategy(object):
         return uri
 
     def get_language(self):
-        """Return current language."""
+        """Return current language"""
         return ''
 
     def send_email_validation(self, backend, email, partial_token=None):
@@ -144,65 +146,63 @@ class BaseStrategy(object):
             return True
 
     def render_html(self, tpl=None, html=None, context=None):
-        """Render given template or raw html with given context."""
+        """Render given template or raw html with given context"""
         return self.tpl.render(tpl, html, context)
 
-    async def authenticate(self, backend, *args, **kwargs):
-        """
-        Trigger the authentication mechanism tied to the current framework.
-        """
+    def authenticate(self, backend, *args, **kwargs):
+        """Trigger the authentication mechanism tied to the current
+        framework"""
         kwargs['strategy'] = self
         kwargs['storage'] = self.storage
         kwargs['backend'] = backend
         args, kwargs = self.clean_authenticate_args(*args, **kwargs)
-        return await backend.authenticate(*args, **kwargs)
+        return backend.authenticate(*args, **kwargs)
 
     def clean_authenticate_args(self, *args, **kwargs):
-        """
-        Take authenticate arguments and return a "cleaned" version of them.
-        """
+        """Take authenticate arguments and return a "cleaned" version
+        of them"""
         return args, kwargs
 
     def get_backends(self):
-        """Return configured backends."""
+        """Return configured backends"""
         return self.setting('AUTHENTICATION_BACKENDS', [])
 
     # Implement the following methods on strategies sub-classes
 
     def redirect(self, url):
-        """Return a response redirect to the given URL."""
+        """Return a response redirect to the given URL"""
         raise NotImplementedError('Implement in subclass')
 
     def get_setting(self, name):
-        """Return value for given setting name."""
+        """Return value for given setting name"""
         raise NotImplementedError('Implement in subclass')
 
     def html(self, content):
-        """Return HTTP response with given content."""
+        """Return HTTP response with given content"""
         raise NotImplementedError('Implement in subclass')
 
     def request_data(self, merge=True):
-        """Return current request data (POST or GET)."""
+        """Return current request data (POST or GET)"""
         raise NotImplementedError('Implement in subclass')
 
     def request_host(self):
-        """Return current host value."""
+        """Return current host value"""
         raise NotImplementedError('Implement in subclass')
 
     def session_get(self, name, default=None):
-        """Return session value for given key."""
+        """Return session value for given key"""
         raise NotImplementedError('Implement in subclass')
 
     def session_set(self, name, value):
-        """Set session value for given key."""
+        """Set session value for given key"""
         raise NotImplementedError('Implement in subclass')
 
     def session_pop(self, name):
-        """Pop session value for given key."""
+        """Pop session value for given key"""
         raise NotImplementedError('Implement in subclass')
 
     def build_absolute_uri(self, path=None):
-        """Build absolute URI with given (optional) path."""
+        """Build absolute URI with given (optional) path"""
         raise NotImplementedError('Implement in subclass')
 
     def request_is_secure(self):
@@ -210,17 +210,17 @@ class BaseStrategy(object):
         raise NotImplementedError('Implement in subclass')
 
     def request_path(self):
-        """path of the current request."""
+        """path of the current request"""
         raise NotImplementedError('Implement in subclass')
 
     def request_port(self):
-        """Port in use for this request."""
+        """Port in use for this request"""
         raise NotImplementedError('Implement in subclass')
 
     def request_get(self):
-        """Request GET data."""
+        """Request GET data"""
         raise NotImplementedError('Implement in subclass')
 
     def request_post(self):
-        """Request POST data."""
+        """Request POST data"""
         raise NotImplementedError('Implement in subclass')

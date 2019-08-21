@@ -1,25 +1,25 @@
+from six.moves.urllib_parse import (
+    urlparse, urlunparse, urlencode, parse_qs as battery_parse_qs
+)
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.poolmanager import PoolManager
+from .exceptions import AuthCanceled, AuthForbidden, AuthUnreachableProvider
 import re
 import sys
 import time
 import unicodedata
 import collections
 import functools
+import hmac
 import logging
-
 import six
 import requests
+import social_core
 
-from six.moves.urllib_parse import (
-    urlparse, urlunparse, urlencode, parse_qs as battery_parse_qs)
-
-from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.poolmanager import PoolManager
-
-from .exceptions import AuthCanceled, AuthForbidden, AuthUnreachableProvider
 
 SETTING_PREFIX = 'SOCIAL_AUTH'
-
 PARTIAL_TOKEN_SESSION_NAME = 'partial_pipeline_token'
+
 
 social_logger = logging.getLogger('social')
 
@@ -29,7 +29,6 @@ class SSLHttpAdapter(HTTPAdapter):
     Transport adapter that allows to use any SSL protocol. Based on:
     http://requests.rtfd.org/latest/user/advanced/#example-specific-ssl-version
     """
-
     def __init__(self, ssl_protocol):
         self.ssl_protocol = ssl_protocol
         super(SSLHttpAdapter, self).__init__()
@@ -61,13 +60,12 @@ def module_member(name):
 
 
 def user_agent():
-    """Builds a simple User-Agent string to send in requests."""
-    import anthill.framework.auth.social.core as social_core
+    """Builds a simple User-Agent string to send in requests"""
     return 'social-auth-' + social_core.__version__
 
 
 def url_add_parameters(url, params):
-    """Adds parameters to URL, parameter will be repeated if already present."""
+    """Adds parameters to URL, parameter will be repeated if already present"""
     if params:
         fragments = list(urlparse(url))
         value = parse_qs(fragments[4])
@@ -94,7 +92,7 @@ def sanitize_redirect(hosts, redirect_to):
     """
     # Avoid redirect on evil URLs like ///evil.com
     if not redirect_to or not hasattr(redirect_to, 'startswith') or \
-            redirect_to.startswith('///'):
+       redirect_to.startswith('///'):
         return None
 
     try:
@@ -133,28 +131,27 @@ def user_is_active(user):
     return is_active
 
 
+# This slugify version was borrowed from django revision a61dbd6
 def slugify(value):
-    """
-    Converts to lowercase, removes non-word characters (alphanumerics
+    """Converts to lowercase, removes non-word characters (alphanumerics
     and underscores) and converts spaces to hyphens. Also strips leading
-    and trailing whitespace.
-    """
+    and trailing whitespace."""
     value = unicodedata.normalize('NFKD', six.text_type(value)) \
-        .encode('ascii', 'ignore') \
-        .decode('ascii')
+                       .encode('ascii', 'ignore') \
+                       .decode('ascii')
     value = re.sub(r'[^\w\s-]', '', value).strip().lower()
     return re.sub(r'[-\s]+', '-', value)
 
 
 def first(func, items):
-    """Return the first item in the list for what func returns True."""
+    """Return the first item in the list for what func returns True"""
     for item in items:
         if func(item):
             return item
 
 
 def parse_qs(value):
-    """Like urlparse.parse_qs but transform list values to single items."""
+    """Like urlparse.parse_qs but transform list values to single items"""
     return drop_lists(battery_parse_qs(value))
 
 
@@ -170,12 +167,15 @@ def drop_lists(value):
     return out
 
 
-def partial_pipeline_data(backend, user=None, partial_token=None, *args, **kwargs):
+def partial_pipeline_data(backend, user=None, partial_token=None,
+                          *args, **kwargs):
     request_data = backend.strategy.request_data()
 
-    partial_argument_name = backend.setting('PARTIAL_PIPELINE_TOKEN_NAME', 'partial_token')
-    partial_token = partial_token or request_data.get(partial_argument_name) or \
-                    backend.strategy.session_get(PARTIAL_TOKEN_SESSION_NAME, None)
+    partial_argument_name = backend.setting('PARTIAL_PIPELINE_TOKEN_NAME',
+                                            'partial_token')
+    partial_token = partial_token or \
+        request_data.get(partial_argument_name) or \
+        backend.strategy.session_get(PARTIAL_TOKEN_SESSION_NAME, None)
 
     if partial_token:
         partial = backend.strategy.partial_load(partial_token)
@@ -205,7 +205,7 @@ def partial_pipeline_data(backend, user=None, partial_token=None, *args, **kwarg
 
 
 def build_absolute_uri(host_url, path=None):
-    """Build absolute URI with given (optional) path."""
+    """Build absolute URI with given (optional) path"""
     path = path or ''
     if path.startswith('http://') or path.startswith('https://'):
         return path
@@ -215,20 +215,12 @@ def build_absolute_uri(host_url, path=None):
 
 
 def constant_time_compare(val1, val2):
-    """
-    Returns True if the two strings are equal, False otherwise.
-    The time taken is independent of the number of characters that match.
-    """
-    if len(val1) != len(val2):
-        return False
-    result = 0
-    if six.PY3 and isinstance(val1, bytes) and isinstance(val2, bytes):
-        for x, y in zip(val1, val2):
-            result |= x ^ y
-    else:
-        for x, y in zip(val1, val2):
-            result |= ord(x) ^ ord(y)
-    return result == 0
+    """Compare two values and prevent timing attacks for cryptographic use."""
+    if isinstance(val1, six.text_type):
+        val1 = val1.encode('utf-8')
+    if isinstance(val2, six.text_type):
+        val2 = val2.encode('utf-8')
+    return hmac.compare_digest(val1, val2)
 
 
 def is_url(value):
@@ -262,13 +254,11 @@ def handle_http_errors(func):
                 raise AuthUnreachableProvider(args[0])
             else:
                 raise
-
     return wrapper
 
 
 def append_slash(url):
-    """
-    Make sure we append a slash at the end of the URL otherwise we
+    """Make sure we append a slash at the end of the URL otherwise we
     have issues with urljoin Example:
     >>> urlparse.urljoin('http://www.example.com/api/v3', 'user/1/')
     'http://www.example.com/api/user/1/'
@@ -294,7 +284,6 @@ class Cache:
 
     Does not work for methods with arguments.
     """
-
     def __init__(self, ttl):
         self.ttl = ttl
         self.cache = {}
@@ -310,12 +299,11 @@ class Cache:
                 try:
                     cached_value = fn(this)
                     self.cache[this.__class__] = (now, cached_value)
-                except Exception:
+                except:
                     # Use previously cached value when call fails, if available
                     if not cached_value:
                         raise
             return cached_value
-
         return wrapped
 
 
