@@ -40,7 +40,7 @@ class TelegramAuth(BaseAuth):
     def extra_data(self, user, uid, response, details=None, *args, **kwargs):
         return response
 
-    def get_user_details(self, response):
+    async def get_user_details(self, response):
         first_name = response.get('first_name', '')
         last_name = response.get('last_name', '')
         fullname = '{} {}'.format(first_name, last_name).strip()
@@ -52,8 +52,8 @@ class TelegramAuth(BaseAuth):
         }
 
     @handle_http_errors
-    def auth_complete(self, *args, **kwargs):
+    async def auth_complete(self, *args, **kwargs):
         response = self.data
         self.verify_data(response)
         kwargs.update({'response': self.data, 'backend': self})
-        return self.strategy.authenticate(*args, **kwargs)
+        return await self.strategy.authenticate(*args, **kwargs)

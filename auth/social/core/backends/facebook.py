@@ -2,23 +2,23 @@
 Facebook OAuth2 and Canvas Application backends, docs at:
     https://python-social-auth.readthedocs.io/en/latest/backends/facebook.html
 """
+from ..utils import parse_qs, constant_time_compare, handle_http_errors
+from .oauth import BaseOAuth2
+from ..exceptions import (
+    AuthException, AuthCanceled, AuthUnknownError, AuthMissingParameter
+)
 import hmac
 import time
 import json
 import base64
 import hashlib
 
-from ..utils import parse_qs, constant_time_compare, handle_http_errors
-from .oauth import BaseOAuth2
-from ..exceptions import AuthException, AuthCanceled, AuthUnknownError, \
-                         AuthMissingParameter
-
 
 API_VERSION = 3.2
 
 
 class FacebookOAuth2(BaseOAuth2):
-    """Facebook OAuth2 authentication backend"""
+    """Facebook OAuth2 authentication backend."""
     name = 'facebook'
     REDIRECT_STATE = False
     RESPONSE_TYPE = None
@@ -50,21 +50,23 @@ class FacebookOAuth2(BaseOAuth2):
         version = self.setting('API_VERSION', API_VERSION)
         return self.ACCESS_TOKEN_URL.format(version=version)
 
-    def get_user_details(self, response):
-        """Return user details from Facebook account"""
+    async def get_user_details(self, response):
+        """Return user details from Facebook account."""
         fullname, first_name, last_name = self.get_user_names(
             response.get('name', ''),
             response.get('first_name', ''),
             response.get('last_name', '')
         )
-        return {'username': response.get('username', response.get('name')),
-                'email': response.get('email', ''),
-                'fullname': fullname,
-                'first_name': first_name,
-                'last_name': last_name}
+        return {
+            'username': response.get('username', response.get('name')),
+            'email': response.get('email', ''),
+            'fullname': fullname,
+            'first_name': first_name,
+            'last_name': last_name
+        }
 
-    def user_data(self, access_token, *args, **kwargs):
-        """Loads user data from service"""
+    async def user_data(self, access_token, *args, **kwargs):
+        """Loads user data from service."""
         params = self.setting('PROFILE_EXTRA_PARAMS', {})
         params['access_token'] = access_token
 
@@ -77,24 +79,24 @@ class FacebookOAuth2(BaseOAuth2):
             ).hexdigest()
 
         version = self.setting('API_VERSION', API_VERSION)
-        return self.get_json(self.USER_DATA_URL.format(version=version),
-                             params=params)
+        return await self.get_json(self.USER_DATA_URL.format(version=version),
+                                   params=params)
 
     def process_error(self, data):
         super(FacebookOAuth2, self).process_error(data)
         if data.get('error_code'):
-            raise AuthCanceled(self, data.get('error_message') or
-                                     data.get('error_code'))
+            raise AuthCanceled(self, (data.get('error_message') or
+                                      data.get('error_code')))
 
     @handle_http_errors
-    def auth_complete(self, *args, **kwargs):
+    async def auth_complete(self, *args, **kwargs):
         """Completes login process, must return user instance"""
         self.process_error(self.data)
         if not self.data.get('code'):
             raise AuthMissingParameter(self, 'code')
         state = self.validate_state()
         key, secret = self.get_key_and_secret()
-        response = self.request(self.access_token_url(), params={
+        response = await self.request(self.access_token_url(), params={
             'client_id': key,
             'redirect_uri': self.get_redirect_uri(state),
             'client_secret': secret,
@@ -108,7 +110,7 @@ class FacebookOAuth2(BaseOAuth2):
         except ValueError:
             response = parse_qs(response.text)
         access_token = response['access_token']
-        return self.do_auth(access_token, response, *args, **kwargs)
+        return await self.do_auth(access_token, response, *args, **kwargs)
 
     def process_refresh_token_response(self, response, *args, **kwargs):
         try:
@@ -128,7 +130,7 @@ class FacebookOAuth2(BaseOAuth2):
     async def do_auth(self, access_token, response=None, *args, **kwargs):
         response = response or {}
 
-        data = self.user_data(access_token)
+        data = await self.user_data(access_token)
 
         if not isinstance(data, dict):
             # From time to time Facebook responds back a JSON with just
@@ -172,7 +174,7 @@ class FacebookAppOAuth2(FacebookOAuth2):
     def uses_redirect(self):
         return False
 
-    def auth_complete(self, *args, **kwargs):
+    async def auth_complete(self, *args, **kwargs):
         access_token = self.data.get('access_token')
         response = {}
 
@@ -192,9 +194,9 @@ class FacebookAppOAuth2(FacebookOAuth2):
                 raise AuthCanceled(self)
             else:
                 raise AuthException(self)
-        return self.do_auth(access_token, response, *args, **kwargs)
+        return await self.do_auth(access_token, response, *args, **kwargs)
 
-    def auth_html(self):
+    async def auth_html(self):
         key, secret = self.get_key_and_secret()
         namespace = self.setting('NAMESPACE', None)
         scope = self.setting('SCOPE', '')

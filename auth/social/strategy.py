@@ -67,17 +67,21 @@ class TornadoStrategy(BaseStrategy):
     def html(self, content):
         self.request_handler.write(content)
 
+    @as_future
     def session_get(self, name, default=None):
         return self.session.get(name, default)
 
+    @as_future
     def session_set(self, name, value):
         self.session[name] = value
         if hasattr(self.session, 'modified'):
             self.session.modified = True
 
+    @as_future
     def session_pop(self, name):
         return self.session.pop(name, None)
 
+    @as_future
     def session_setdefault(self, name, value):
         return self.session.setdefault(name, value)
 

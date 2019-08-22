@@ -1,3 +1,4 @@
+from anthill.framework.utils.asynchronous import as_future
 from .utils import setting_name, module_member, PARTIAL_TOKEN_SESSION_NAME
 from .store import OpenIdStore, OpenIdSessionWrapper
 from .pipeline import DEFAULT_AUTH_PIPELINE, DEFAULT_DISCONNECT_PIPELINE
@@ -54,11 +55,11 @@ class BaseStrategy:
     def get_user(self, *args, **kwargs):
         return self.storage.user.get_user(*args, **kwargs)
 
-    def session_setdefault(self, name, value):
-        self.session_set(name, value)
-        return self.session_get(name)
+    async def session_setdefault(self, name, value):
+        await self.session_set(name, value)
+        return await self.session_get(name)
 
-    def openid_session_dict(self, name):
+    async def openid_session_dict(self, name):
         # Many frameworks are switching the session serialization from Pickle
         # to JSON to avoid code execution risks. Flask did this from Flask
         # 0.10, Django is switching to JSON by default from version 1.6.
@@ -72,7 +73,8 @@ class BaseStrategy:
         # This method will return a wrapper over the session value used with
         # openid (a dict) which will automatically keep a pickled value for the
         # mentioned classes.
-        return OpenIdSessionWrapper(self.session_setdefault(name, {}))
+        r = await self.session_setdefault(name, {})
+        return OpenIdSessionWrapper(r)
 
     def to_session_value(self, val):
         return val
@@ -114,7 +116,7 @@ class BaseStrategy:
             key = self.setting('SECRET_KEY', '')
             seed = '{0}{1}{2}'.format(random.getstate(), time.time(), key)
             random.seed(hashlib.sha256(seed.encode()).digest())
-        return ''.join([random.choice(chars) for i in range(length)])
+        return ''.join([random.choice(chars) for _ in range(length)])
 
     def absolute_uri(self, path=None):
         uri = self.build_absolute_uri(path)
@@ -146,63 +148,67 @@ class BaseStrategy:
             return True
 
     def render_html(self, tpl=None, html=None, context=None):
-        """Render given template or raw html with given context"""
+        """Render given template or raw html with given context."""
         return self.tpl.render(tpl, html, context)
 
-    def authenticate(self, backend, *args, **kwargs):
-        """Trigger the authentication mechanism tied to the current
-        framework"""
+    async def authenticate(self, backend, *args, **kwargs):
+        """
+        Trigger the authentication mechanism tied to the current
+        framework.
+        """
         kwargs['strategy'] = self
         kwargs['storage'] = self.storage
         kwargs['backend'] = backend
         args, kwargs = self.clean_authenticate_args(*args, **kwargs)
-        return backend.authenticate(*args, **kwargs)
+        return await backend.authenticate(*args, **kwargs)
 
     def clean_authenticate_args(self, *args, **kwargs):
-        """Take authenticate arguments and return a "cleaned" version
-        of them"""
+        """
+        Take authenticate arguments and return a "cleaned" version
+        of them.
+        """
         return args, kwargs
 
     def get_backends(self):
-        """Return configured backends"""
+        """Return configured backends."""
         return self.setting('AUTHENTICATION_BACKENDS', [])
 
     # Implement the following methods on strategies sub-classes
 
     def redirect(self, url):
-        """Return a response redirect to the given URL"""
+        """Return a response redirect to the given URL."""
         raise NotImplementedError('Implement in subclass')
 
     def get_setting(self, name):
-        """Return value for given setting name"""
+        """Return value for given setting name."""
         raise NotImplementedError('Implement in subclass')
 
     def html(self, content):
-        """Return HTTP response with given content"""
+        """Return HTTP response with given content."""
         raise NotImplementedError('Implement in subclass')
 
     def request_data(self, merge=True):
-        """Return current request data (POST or GET)"""
+        """Return current request data (POST or GET)."""
         raise NotImplementedError('Implement in subclass')
 
     def request_host(self):
-        """Return current host value"""
+        """Return current host value."""
         raise NotImplementedError('Implement in subclass')
 
-    def session_get(self, name, default=None):
-        """Return session value for given key"""
+    async def session_get(self, name, default=None):
+        """Return session value for given key."""
         raise NotImplementedError('Implement in subclass')
 
-    def session_set(self, name, value):
-        """Set session value for given key"""
+    async def session_set(self, name, value):
+        """Set session value for given key."""
         raise NotImplementedError('Implement in subclass')
 
-    def session_pop(self, name):
-        """Pop session value for given key"""
+    async def session_pop(self, name):
+        """Pop session value for given key."""
         raise NotImplementedError('Implement in subclass')
 
     def build_absolute_uri(self, path=None):
-        """Build absolute URI with given (optional) path"""
+        """Build absolute URI with given (optional) path."""
         raise NotImplementedError('Implement in subclass')
 
     def request_is_secure(self):
@@ -210,17 +216,17 @@ class BaseStrategy:
         raise NotImplementedError('Implement in subclass')
 
     def request_path(self):
-        """path of the current request"""
+        """path of the current request."""
         raise NotImplementedError('Implement in subclass')
 
     def request_port(self):
-        """Port in use for this request"""
+        """Port in use for this request."""
         raise NotImplementedError('Implement in subclass')
 
     def request_get(self):
-        """Request GET data"""
+        """Request GET data."""
         raise NotImplementedError('Implement in subclass')
 
     def request_post(self):
-        """Request POST data"""
+        """Request POST data."""
         raise NotImplementedError('Implement in subclass')

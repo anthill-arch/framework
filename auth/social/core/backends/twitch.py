@@ -6,7 +6,7 @@ from .oauth import BaseOAuth2
 
 
 class TwitchOAuth2(BaseOAuth2):
-    """Twitch OAuth authentication backend"""
+    """Twitch OAuth authentication backend."""
     name = 'twitch'
     ID_KEY = '_id'
     AUTHORIZATION_URL = 'https://api.twitch.tv/kraken/oauth2/authorize'
@@ -15,7 +15,7 @@ class TwitchOAuth2(BaseOAuth2):
     DEFAULT_SCOPE = ['user_read']
     REDIRECT_STATE = False
 
-    def get_user_details(self, response):
+    async def get_user_details(self, response):
         return {
             'username': response.get('name'),
             'email': response.get('email'),
@@ -23,8 +23,8 @@ class TwitchOAuth2(BaseOAuth2):
             'last_name': ''
         }
 
-    def user_data(self, access_token, *args, **kwargs):
-        return self.get_json(
+    async def user_data(self, access_token, *args, **kwargs):
+        return await self.get_json(
             'https://api.twitch.tv/kraken/user/',
             params={'oauth_token': access_token}
         )

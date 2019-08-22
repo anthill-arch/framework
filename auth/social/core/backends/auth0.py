@@ -3,12 +3,11 @@ Auth0 implementation based on:
 https://auth0.com/docs/quickstart/webapp/django/01-login
 """
 from jose import jwt
-
 from .oauth import BaseOAuth2
 
 
 class Auth0OAuth2(BaseOAuth2):
-    """Auth0 OAuth authentication backend"""
+    """Auth0 OAuth authentication backend."""
     name = 'auth0'
     SCOPE_SEPARATOR = ' '
     ACCESS_TOKEN_METHOD = 'POST'
@@ -17,7 +16,7 @@ class Auth0OAuth2(BaseOAuth2):
     ]
 
     def api_path(self, path=''):
-        """Build API path for Auth0 domain"""
+        """Build API path for Auth0 domain."""
         return 'https://{domain}/{path}'.format(domain=self.setting('DOMAIN'),
                                                 path=path)
 
@@ -31,10 +30,10 @@ class Auth0OAuth2(BaseOAuth2):
         """Return current user id."""
         return details['user_id']
 
-    def get_user_details(self, response):
+    async def get_user_details(self, response):
         # Obtain JWT and the keys to validate the signature
         id_token = response.get('id_token')
-        jwks = self.get_json(self.api_path('.well-known/jwks.json'))
+        jwks = await self.get_json(self.api_path('.well-known/jwks.json'))
         issuer = self.api_path()
         audience = self.setting('KEY')  # CLIENT_ID
         payload = jwt.decode(id_token,
@@ -43,11 +42,13 @@ class Auth0OAuth2(BaseOAuth2):
                              audience=audience,
                              issuer=issuer)
         fullname, first_name, last_name = self.get_user_names(payload['name'])
-        return {'username': payload['nickname'],
-                'email': payload['email'],
-                'email_verified': payload.get('email_verified', False),
-                'fullname': fullname,
-                'first_name': first_name,
-                'last_name': last_name,
-                'picture': payload['picture'],
-                'user_id': payload['sub']}
+        return {
+            'username': payload['nickname'],
+            'email': payload['email'],
+            'email_verified': payload.get('email_verified', False),
+            'fullname': fullname,
+            'first_name': first_name,
+            'last_name': last_name,
+            'picture': payload['picture'],
+            'user_id': payload['sub']
+        }

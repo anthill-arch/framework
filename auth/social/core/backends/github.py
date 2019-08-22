@@ -11,7 +11,7 @@ from ..exceptions import AuthFailed
 
 
 class GithubOAuth2(BaseOAuth2):
-    """Github OAuth authentication backend"""
+    """Github OAuth authentication backend."""
     name = 'github'
     API_URL = 'https://api.github.com/'
     AUTHORIZATION_URL = 'https://github.com/login/oauth/authorize'
@@ -30,23 +30,25 @@ class GithubOAuth2(BaseOAuth2):
     def api_url(self):
         return self.API_URL
 
-    def get_user_details(self, response):
-        """Return user details from Github account"""
+    async def get_user_details(self, response):
+        """Return user details from Github account."""
         fullname, first_name, last_name = self.get_user_names(
             response.get('name')
         )
-        return {'username': response.get('login'),
-                'email': response.get('email') or '',
-                'fullname': fullname,
-                'first_name': first_name,
-                'last_name': last_name}
+        return {
+            'username': response.get('login'),
+            'email': response.get('email') or '',
+            'fullname': fullname,
+            'first_name': first_name,
+            'last_name': last_name
+        }
 
-    def user_data(self, access_token, *args, **kwargs):
-        """Loads user data from service"""
-        data = self._user_data(access_token)
+    async def user_data(self, access_token, *args, **kwargs):
+        """Loads user data from service."""
+        data = await self._user_data(access_token)
         if not data.get('email'):
             try:
-                emails = self._user_data(access_token, '/emails')
+                emails = await self._user_data(access_token, '/emails')
             except (HTTPError, ValueError, TypeError):
                 emails = []
 
@@ -63,17 +65,17 @@ class GithubOAuth2(BaseOAuth2):
                 data['email'] = email
         return data
 
-    def _user_data(self, access_token, path=None):
+    async def _user_data(self, access_token, path=None):
         url = urljoin(self.api_url(), 'user{0}'.format(path or ''))
-        return self.get_json(url, params={'access_token': access_token})
+        return await self.get_json(url, params={'access_token': access_token})
 
 
 class GithubMemberOAuth2(GithubOAuth2):
     no_member_string = ''
 
-    def user_data(self, access_token, *args, **kwargs):
-        """Loads user data from service"""
-        user_data = super(GithubMemberOAuth2, self).user_data(
+    async def user_data(self, access_token, *args, **kwargs):
+        """Loads user data from service."""
+        user_data = await super(GithubMemberOAuth2, self).user_data(
             access_token, *args, **kwargs
         )
         try:
@@ -84,8 +86,7 @@ class GithubMemberOAuth2(GithubOAuth2):
             # if the user is a member of the organization, response code
             # will be 204, see http://bit.ly/ZS6vFl
             if err.response.status_code != 204:
-                raise AuthFailed(self,
-                                 'User doesn\'t belong to the organization')
+                raise AuthFailed(self, 'User doesn\'t belong to the organization')
         return user_data
 
     def member_url(self, user_data):

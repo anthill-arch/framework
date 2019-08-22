@@ -20,11 +20,13 @@ class DiscordOAuth2(BaseOAuth2):
         ('refresh_token', 'refresh_token')
     ]
 
-    def get_user_details(self, response):
-        return {'username': response.get('username'),
-                'email': response.get('email') or ''}
+    async def get_user_details(self, response):
+        return {
+            'username': response.get('username'),
+            'email': response.get('email') or ''
+        }
 
-    def user_data(self, access_token, *args, **kwargs):
+    async def user_data(self, access_token, *args, **kwargs):
         url = 'https://discordapp.com/api/users/@me'
         auth_header = {"Authorization": "Bearer %s" % access_token}
-        return self.get_json(url, headers=auth_header)
+        return await self.get_json(url, headers=auth_header)

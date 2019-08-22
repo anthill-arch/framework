@@ -7,13 +7,13 @@ from jose import jwk, jwt
 from jose.jwt import JWTError, JWTClaimsError, ExpiredSignatureError
 from jose.utils import base64url_decode
 
-from social_core.backends.oauth import BaseOAuth2
-from social_core.utils import cache
-from social_core.exceptions import AuthTokenError
+from .oauth import BaseOAuth2
+from .utils import cache
+from ..exceptions import AuthTokenError
 
 
-class OpenIdConnectAssociation(object):
-    """ Use Association model to save the nonce by force."""
+class OpenIdConnectAssociation:
+    """Use Association model to save the nonce by force."""
 
     def __init__(self, handle, secret='', issued=0, lifetime=0, assoc_type=''):
         self.handle = handle  # as nonce

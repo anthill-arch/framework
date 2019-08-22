@@ -11,14 +11,10 @@ async def do_auth(backend, redirect_name='next'):
     # Save any defined next value into session
     data = backend.strategy.request_data(merge=False)
 
-    session_set = backend.strategy.session_set
-    if not inspect.iscoroutinefunction(session_set):
-        session_set = as_future(session_set)
-
     # Save extra data into session.
     for field_name in backend.setting('FIELDS_STORED_IN_SESSION', []):
         if field_name in data:
-            await session_set(field_name, data[field_name])
+            await backend.strategy.session_set(field_name, data[field_name])
 
     if redirect_name in data:
         # Check and sanitize a user-defined GET/POST next field value
@@ -27,7 +23,7 @@ async def do_auth(backend, redirect_name='next'):
             allowed_hosts = backend.setting('ALLOWED_REDIRECT_HOSTS', []) + \
                             [backend.strategy.request_host()]
             redirect_uri = sanitize_redirect(allowed_hosts, redirect_uri)
-        await session_set(
+        await backend.strategy.session_set(
             redirect_name,
             redirect_uri or backend.setting('LOGIN_REDIRECT_URL')
         )
@@ -83,8 +79,7 @@ async def do_complete(backend, login, user=None, redirect_name='next',
                                   redirect_value,
                                   'LOGIN_REDIRECT_URL')
             else:
-                url = setting_url(backend, redirect_value,
-                                  'LOGIN_REDIRECT_URL')
+                url = setting_url(backend, redirect_value, 'LOGIN_REDIRECT_URL')
         else:
             if backend.setting('INACTIVE_USER_LOGIN', False):
                 social_user = user.social_user
@@ -112,9 +107,7 @@ async def do_disconnect(backend, user, association_id=None, redirect_name='next'
     partial = partial_pipeline_data(backend, user, *args, **kwargs)
     if partial:
         if association_id and not partial.kwargs.get('association_id'):
-            partial.extend_kwargs({
-                'association_id': association_id
-            })
+            partial.extend_kwargs({'association_id': association_id})
         response = backend.disconnect(*partial.args, **partial.kwargs)
         # clean partial data after usage
         backend.strategy.clean_partial_pipeline(partial.token)

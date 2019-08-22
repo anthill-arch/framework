@@ -1,21 +1,17 @@
-import datetime
-from calendar import timegm
-
-import six
-
-from openid.consumer.consumer import Consumer, SUCCESS, CANCEL, FAILURE
-from openid.consumer.discover import DiscoveryFailure
-from openid.extensions import sreg, ax, pape
-
 from ..utils import url_add_parameters, cache
 from .base import BaseAuth
 from .oauth import BaseOAuth2
-from ..exceptions import AuthException, AuthFailed, AuthCanceled, \
-                         AuthUnknownError, AuthMissingParameter, \
-                         AuthTokenError
-
+from ..exceptions import (
+    AuthException, AuthFailed, AuthCanceled,
+    AuthUnknownError, AuthMissingParameter, AuthTokenError
+)
 from anthill.framework.utils.asynchronous import as_future
-
+from openid.consumer.consumer import Consumer, SUCCESS, CANCEL, FAILURE
+from openid.consumer.discover import DiscoveryFailure
+from openid.extensions import sreg, ax, pape
+from calendar import timegm
+import datetime
+import six
 
 # OpenID configuration
 OLD_AX_ATTRS = [
@@ -74,7 +70,7 @@ class OpenIdAuth(BaseAuth):
             resp = sreg.SRegResponse.fromSuccessResponse(response)
             if resp:
                 values.update((alias, resp.get(name) or '')
-                                    for name, alias in sreg_names)
+                              for name, alias in sreg_names)
 
         # Use Attribute Exchange attributes if provided
         if ax_names:
@@ -85,10 +81,15 @@ class OpenIdAuth(BaseAuth):
                     values[name] = resp.getSingle(src, '') or values.get(name)
         return values
 
-    def get_user_details(self, response):
-        """Return user details from an OpenID request"""
-        values = {'username': '', 'email': '', 'fullname': '',
-                  'first_name': '', 'last_name': ''}
+    async def get_user_details(self, response):
+        """Return user details from an OpenID request."""
+        values = {
+            'username': '',
+            'email': '',
+            'fullname': '',
+            'first_name': '',
+            'last_name': ''
+        }
         # update values using SimpleRegistration or AttributeExchange
         # values
         values.update(self.values_from_response(
@@ -109,15 +110,19 @@ class OpenIdAuth(BaseAuth):
                 last_name = fullname
 
         username_key = self.setting('USERNAME_KEY') or self.USERNAME_KEY
-        values.update({'fullname': fullname, 'first_name': first_name,
-                       'last_name': last_name,
-                       'username': values.get(username_key) or
-                                   (first_name.title() + last_name.title()),
-                       'email': email})
+        values.update({
+            'fullname': fullname,
+            'first_name': first_name,
+            'last_name': last_name,
+            'username': (values.get(username_key) or
+                         (first_name.title() + last_name.title())),
+            'email': email
+        })
         return values
 
     def extra_data(self, user, uid, response, details=None, *args, **kwargs):
-        """Return defined extra data names to store in extra_data field.
+        """
+        Return defined extra data names to store in extra_data field.
         Settings will be inspected to get more values names that should be
         stored on extra_data field. Setting name is created from current
         backend name (all uppercase) plus _SREG_EXTRA_DATA and
@@ -136,33 +141,30 @@ class OpenIdAuth(BaseAuth):
         values.update(from_details)
         return values
 
-    def auth_url(self):
-        """Return auth URL returned by service"""
-        openid_request = self.setup_request(self.auth_extra_arguments())
+    async def auth_url(self):
+        """Return auth URL returned by service."""
+        openid_request = await self.setup_request(self.auth_extra_arguments())
         # Construct completion URL, including page we should redirect to
         return_to = self.strategy.absolute_uri(self.redirect_uri)
         return openid_request.redirectURL(self.trust_root(), return_to)
 
-    @as_future
-    def auth_html(self):
-        """Return auth HTML returned by service"""
-        openid_request = self.setup_request(self.auth_extra_arguments())
+    async def auth_html(self):
+        """Return auth HTML returned by service."""
+        openid_request = await self.setup_request(self.auth_extra_arguments())
         return_to = self.strategy.absolute_uri(self.redirect_uri)
         form_tag = {'id': 'openid_message'}
         return openid_request.htmlMarkup(self.trust_root(), return_to,
                                          form_tag_attrs=form_tag)
 
     def trust_root(self):
-        """Return trust-root option"""
-        return self.setting('OPENID_TRUST_ROOT') or \
-               self.strategy.absolute_uri('/')
+        """Return trust-root option."""
+        return self.setting('OPENID_TRUST_ROOT') or self.strategy.absolute_uri('/')
 
     async def continue_pipeline(self, partial):
-        """Continue previous halted pipeline"""
-        response = self.consumer().complete(dict(self.data.items()),
-                                            self.strategy.absolute_uri(
-                                                self.redirect_uri
-                                            ))
+        """Continue previous halted pipeline."""
+        consumer = await self.consumer()
+        response = consumer.complete(dict(self.data.items()),
+                                     self.strategy.absolute_uri(self.redirect_uri))
         return await self.strategy.authenticate(self,
                                                 response=response,
                                                 pipeline_index=partial.next_step,
@@ -170,11 +172,10 @@ class OpenIdAuth(BaseAuth):
                                                 **partial.kwargs)
 
     async def auth_complete(self, *args, **kwargs):
-        """Complete auth process"""
-        response = self.consumer().complete(dict(self.data.items()),
-                                            self.strategy.absolute_uri(
-                                                self.redirect_uri
-                                            ))
+        """Complete auth process."""
+        consumer = await self.consumer()
+        response = consumer.complete(dict(self.data.items()),
+                                     self.strategy.absolute_uri(self.redirect_uri))
         self.process_error(response)
         return await self.strategy.authenticate(self, response=response,
                                                 *args, **kwargs)
@@ -189,30 +190,24 @@ class OpenIdAuth(BaseAuth):
         elif data.status != SUCCESS:
             raise AuthUnknownError(self, data.status)
 
-    def setup_request(self, params=None):
-        """Setup request"""
-        request = self.openid_request(params)
+    async def setup_request(self, params=None):
+        """Setup request."""
+        request = await self.openid_request(params)
         # Request some user details. Use attribute exchange if provider
         # advertises support.
         if request.endpoint.supportsType(ax.AXMessage.ns_uri):
             fetch_request = ax.FetchRequest()
             # Mark all attributes as required, Google ignores optional ones
             for attr, alias in self.get_ax_attributes():
-                fetch_request.add(ax.AttrInfo(attr, alias=alias,
-                                              required=True))
+                fetch_request.add(ax.AttrInfo(attr, alias=alias, required=True))
         else:
             fetch_request = sreg.SRegRequest(
-                optional=list(dict(self.get_sreg_attributes()).keys())
-            )
+                optional=list(dict(self.get_sreg_attributes()).keys()))
         request.addExtension(fetch_request)
 
         # Add PAPE Extension for if configured
-        preferred_policies = self.setting(
-            'OPENID_PAPE_PREFERRED_AUTH_POLICIES'
-        )
-        preferred_level_types = self.setting(
-            'OPENID_PAPE_PREFERRED_AUTH_LEVEL_TYPES'
-        )
+        preferred_policies = self.setting('OPENID_PAPE_PREFERRED_AUTH_POLICIES')
+        preferred_level_types = self.setting('OPENID_PAPE_PREFERRED_AUTH_LEVEL_TYPES')
         max_age = self.setting('OPENID_PAPE_MAX_AUTH_AGE')
         if max_age is not None:
             try:
@@ -229,36 +224,38 @@ class OpenIdAuth(BaseAuth):
             request.addExtension(pape_request)
         return request
 
-    def consumer(self):
+    async def consumer(self):
         """Create an OpenID Consumer object for the given Django request."""
         if not hasattr(self, '_consumer'):
-            self._consumer = self.create_consumer(self.strategy.openid_store())
+            self._consumer = await self.create_consumer(self.strategy.openid_store())
         return self._consumer
 
-    def create_consumer(self, store=None):
-        return Consumer(self.strategy.openid_session_dict(SESSION_NAME), store)
+    async def create_consumer(self, store=None):
+        r = await self.strategy.openid_session_dict(SESSION_NAME)
+        return Consumer(r, store)
 
-    @as_future
-    def uses_redirect(self):
-        """Return true if openid request will be handled with redirect or
+    async def uses_redirect(self):
+        """
+        Return true if openid request will be handled with redirect or
         HTML content will be returned.
         """
-        return self.openid_request().shouldSendRedirect()
+        response = await self.openid_request()
+        return response.shouldSendRedirect()
 
-    def openid_request(self, params=None):
-        """Return openid request"""
+    async def openid_request(self, params=None):
+        """Return openid request."""
+        consumer = await self.consumer()
         try:
-            return self.consumer().begin(url_add_parameters(self.openid_url(),
-                                         params))
+            return consumer.begin(url_add_parameters(self.openid_url(), params))
         except DiscoveryFailure as err:
-            raise AuthException(self, 'OpenID discovery error: {0}'.format(
-                err
-            ))
+            raise AuthException(self, 'OpenID discovery error: {0}'.format(err))
 
     def openid_url(self):
-        """Return service provider URL.
+        """
+        Return service provider URL.
         This base class is generic accepting a POST parameter that specifies
-        provider URL."""
+        provider URL.
+        """
         if self.URL:
             return self.URL
         elif OPENID_ID_FIELD in self.data:

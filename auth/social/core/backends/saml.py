@@ -23,8 +23,8 @@ OID_SURNAME = "urn:oid:2.5.4.4"
 OID_USERID = "urn:oid:0.9.2342.19200300.100.1.1"
 
 
-class SAMLIdentityProvider(object):
-    """Wrapper around configuration for a SAML Identity provider"""
+class SAMLIdentityProvider:
+    """Wrapper around configuration for a SAML Identity provider."""
     def __init__(self, name, **kwargs):
         """Load and parse configuration"""
         self.name = name

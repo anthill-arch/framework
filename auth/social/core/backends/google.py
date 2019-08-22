@@ -8,9 +8,9 @@ from .oauth import BaseOAuth2, BaseOAuth1
 from ..exceptions import AuthMissingParameter
 
 
-class BaseGoogleAuth(object):
+class BaseGoogleAuth:
     def get_user_id(self, details, response):
-        """Use google email as unique id"""
+        """Use google email as unique id."""
         if self.setting('USE_UNIQUE_USER_ID', False):
             if 'sub' in response:
                 return response['sub']
@@ -19,8 +19,8 @@ class BaseGoogleAuth(object):
         else:
             return details['email']
 
-    def get_user_details(self, response):
-        """Return user details from Google API account"""
+    async def get_user_details(self, response):
+        """Return user details from Google API account."""
         if 'email' in response:
             email = response['email']
         else:
@@ -35,17 +35,19 @@ class BaseGoogleAuth(object):
         fullname, first_name, last_name = self.get_user_names(
             name, given_name, family_name
         )
-        return {'username': email.split('@', 1)[0],
-                'email': email,
-                'fullname': fullname,
-                'first_name': first_name,
-                'last_name': last_name}
+        return {
+            'username': email.split('@', 1)[0],
+            'email': email,
+            'fullname': fullname,
+            'first_name': first_name,
+            'last_name': last_name
+        }
 
 
 class BaseGoogleOAuth2API(BaseGoogleAuth):
-    def user_data(self, access_token, *args, **kwargs):
-        """Return user data from Google API"""
-        return self.get_json(
+    async def user_data(self, access_token, *args, **kwargs):
+        """Return user data from Google API."""
+        return await self.get_json(
             'https://www.googleapis.com/oauth2/v3/userinfo',
             headers={
                 'Authorization': 'Bearer %s' % access_token,
@@ -60,7 +62,7 @@ class BaseGoogleOAuth2API(BaseGoogleAuth):
 
 
 class GoogleOAuth2(BaseGoogleOAuth2API, BaseOAuth2):
-    """Google OAuth2 authentication backend"""
+    """Google OAuth2 authentication backend."""
     name = 'google-oauth2'
     REDIRECT_STATE = False
     AUTHORIZATION_URL = 'https://accounts.google.com/o/oauth2/auth'
@@ -106,37 +108,36 @@ class GooglePlusAuth(BaseGoogleOAuth2API, BaseOAuth2):
         return params
 
     @handle_http_errors
-    def auth_complete(self, *args, **kwargs):
+    async def auth_complete(self, *args, **kwargs):
         if 'access_token' in self.data:  # Client-side workflow
             token = self.data.get('access_token')
-            response = self.get_json(
+            response = await self.get_json(
                 'https://www.googleapis.com/oauth2/v3/tokeninfo',
                 params={'access_token': token}
             )
             self.process_error(response)
-            return self.do_auth(token, response=response, *args, **kwargs)
+            return await self.do_auth(token, response=response, *args, **kwargs)
         elif 'code' in self.data:  # Server-side workflow
-            response = self.request_access_token(
+            response = await self.request_access_token(
                 self.ACCESS_TOKEN_URL,
                 data=self.auth_complete_params(),
                 headers=self.auth_headers(),
                 method=self.ACCESS_TOKEN_METHOD
             )
             self.process_error(response)
-            return self.do_auth(response['access_token'],
-                                response=response,
-                                *args, **kwargs)
+            return await self.do_auth(response['access_token'], response=response,
+                                      *args, **kwargs)
         elif 'id_token' in self.data:  # Client-side workflow
             token = self.data.get('id_token')
-            return self.do_auth(token, *args, **kwargs)
+            return await self.do_auth(token, *args, **kwargs)
         else:
             raise AuthMissingParameter(self, 'access_token, id_token, or code')
 
-    def user_data(self, access_token, *args, **kwargs):
+    async def user_data(self, access_token, *args, **kwargs):
         if 'id_token' not in self.data:
-            return super(GooglePlusAuth, self).user_data(access_token, *args,
-                                                         **kwargs)
-        response = self.get_json(
+            return await super(GooglePlusAuth, self).user_data(access_token, *args,
+                                                               **kwargs)
+        response = await self.get_json(
             'https://www.googleapis.com/oauth2/v3/tokeninfo',
             params={'id_token': access_token}
         )
@@ -145,16 +146,16 @@ class GooglePlusAuth(BaseGoogleOAuth2API, BaseOAuth2):
 
 
 class GoogleOAuth(BaseGoogleAuth, BaseOAuth1):
-    """Google OAuth authorization mechanism"""
+    """Google OAuth authorization mechanism."""
     name = 'google-oauth'
     AUTHORIZATION_URL = 'https://www.google.com/accounts/OAuthAuthorizeToken'
     REQUEST_TOKEN_URL = 'https://www.google.com/accounts/OAuthGetRequestToken'
     ACCESS_TOKEN_URL = 'https://www.google.com/accounts/OAuthGetAccessToken'
     DEFAULT_SCOPE = ['https://www.googleapis.com/auth/userinfo#email']
 
-    def user_data(self, access_token, *args, **kwargs):
-        """Return user data from Google API"""
-        return self.get_querystring(
+    async def user_data(self, access_token, *args, **kwargs):
+        """Return user data from Google API."""
+        return await self.get_querystring(
             'https://www.googleapis.com/userinfo/email',
             auth=self.oauth_auth(access_token)
         )

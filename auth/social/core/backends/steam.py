@@ -17,27 +17,29 @@ class SteamOpenId(OpenIdAuth):
         """Return user unique id provided by service"""
         return self._user_id(response)
 
-    def get_user_details(self, response):
-        player = self.get_json(USER_INFO, params={
+    async def get_user_details(self, response):
+        player = await self.get_json(USER_INFO, params={
             'key': self.setting('API_KEY'),
             'steamids': self._user_id(response)
         })
         if len(player['response']['players']) > 0:
             player = player['response']['players'][0]
-            details = {'username': player.get('personaname'),
-                       'email': '',
-                       'fullname': '',
-                       'first_name': '',
-                       'last_name': '',
-                       'player': player}
+            details = {
+                'username': player.get('personaname'),
+                'email': '',
+                'fullname': '',
+                'first_name': '',
+                'last_name': '',
+                'player': player
+            }
         else:
             details = {}
         return details
 
-    def consumer(self):
+    async def consumer(self):
         # Steam seems to support stateless mode only, ignore store
         if not hasattr(self, '_consumer'):
-            self._consumer = self.create_consumer()
+            self._consumer = await self.create_consumer()
         return self._consumer
 
     def _user_id(self, response):
