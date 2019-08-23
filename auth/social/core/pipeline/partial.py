@@ -4,7 +4,8 @@ from functools import wraps
 
 
 def partial_step(save_to_session):
-    """Wraps func to behave like a partial pipeline step, any output
+    """
+    Wraps func to behave like a partial pipeline step, any output
     that's not None or {} will be considered a response object and
     will be returned to user.
 

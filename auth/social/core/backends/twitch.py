@@ -15,7 +15,7 @@ class TwitchOAuth2(BaseOAuth2):
     DEFAULT_SCOPE = ['user_read']
     REDIRECT_STATE = False
 
-    async def get_user_details(self, response):
+    def get_user_details(self, response):
         return {
             'username': response.get('name'),
             'email': response.get('email'),

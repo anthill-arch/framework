@@ -20,7 +20,7 @@ class DiscordOAuth2(BaseOAuth2):
         ('refresh_token', 'refresh_token')
     ]
 
-    async def get_user_details(self, response):
+    def get_user_details(self, response):
         return {
             'username': response.get('username'),
             'email': response.get('email') or ''

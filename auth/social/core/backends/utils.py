@@ -1,5 +1,4 @@
 from collections import OrderedDict
-
 from .base import BaseAuth
 from ..exceptions import MissingBackend
 from ..utils import module_member, user_is_authenticated
@@ -39,7 +38,8 @@ def load_backends(backends, force_load=False):
 
 
 def get_backend(backends, name):
-    """Returns a backend by name. Backends are stored in the BACKENDSCACHE
+    """
+    Returns a backend by name. Backends are stored in the BACKENDSCACHE
     cache dict. If not found, each of the modules referenced in
     AUTHENTICATION_BACKENDS is imported and checked for a BACKENDS
     definition. If the named backend is found in the module's BACKENDS
@@ -70,9 +70,11 @@ def user_backends_data(user, backends, storage):
     no difference between 'not_associated' and 'backends'.
     """
     available = list(load_backends(backends).keys())
-    values = {'associated': [],
-              'not_associated': available,
-              'backends': available}
+    values = {
+        'associated': [],
+        'not_associated': available,
+        'backends': available
+    }
     if user_is_authenticated(user):
         associated = storage.user.get_social_auth_for_user(user)
         not_associated = list(set(available) -

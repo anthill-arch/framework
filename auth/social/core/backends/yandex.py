@@ -19,9 +19,9 @@ class YandexOpenId(OpenIdAuth):
     def get_user_id(self, details, response):
         return details['email'] or response.identity_url
 
-    async def get_user_details(self, response):
+    def get_user_details(self, response):
         """Generate username from identity url."""
-        values = await super(YandexOpenId, self).get_user_details(response)
+        values = super().get_user_details(response)
         values['username'] = (values.get('username') or
                               urlsplit(response.identity_url)
                               .path.strip('/'))
@@ -37,7 +37,7 @@ class YandexOAuth2(BaseOAuth2):
     ACCESS_TOKEN_METHOD = 'POST'
     REDIRECT_STATE = False
 
-    async def get_user_details(self, response):
+    def get_user_details(self, response):
         fullname, first_name, last_name = self.get_user_names(
             response.get('real_name') or response.get('display_name') or ''
         )
@@ -66,7 +66,7 @@ class YaruOAuth2(BaseOAuth2):
     ACCESS_TOKEN_METHOD = 'POST'
     REDIRECT_STATE = False
 
-    async def get_user_details(self, response):
+    def get_user_details(self, response):
         fullname, first_name, last_name = self.get_user_names(
             response.get('real_name') or response.get('display_name') or ''
         )

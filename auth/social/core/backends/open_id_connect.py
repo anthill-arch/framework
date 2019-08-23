@@ -1,15 +1,13 @@
-import json
-import datetime
-from calendar import timegm
-
-import six
-from jose import jwk, jwt
-from jose.jwt import JWTError, JWTClaimsError, ExpiredSignatureError
-from jose.utils import base64url_decode
-
 from .oauth import BaseOAuth2
 from .utils import cache
 from ..exceptions import AuthTokenError
+from calendar import timegm
+from jose import jwk, jwt
+from jose.jwt import JWTError, JWTClaimsError, ExpiredSignatureError
+from jose.utils import base64url_decode
+import json
+import datetime
+import six
 
 
 class OpenIdConnectAssociation:
@@ -50,46 +48,46 @@ class OpenIdConnectAuth(BaseOAuth2):
         self.id_token = None
         super(OpenIdConnectAuth, self).__init__(*args, **kwargs)
 
-    def authorization_url(self):
-        return self.AUTHORIZATION_URL or \
-            self.oidc_config().get('authorization_endpoint')
+    async def authorization_url(self):
+        config = await self.oidc_config()
+        return self.AUTHORIZATION_URL or config.get('authorization_endpoint')
 
-    def access_token_url(self):
-        return self.ACCESS_TOKEN_URL or \
-            self.oidc_config().get('token_endpoint')
+    async def access_token_url(self):
+        config = await self.oidc_config()
+        return self.ACCESS_TOKEN_URL or config.get('token_endpoint')
 
-    def revoke_token_url(self, token, uid):
-        return self.REVOKE_TOKEN_URL or \
-            self.oidc_config().get('revocation_endpoint')
+    async def revoke_token_url(self, token, uid):
+        config = await self.oidc_config()
+        return self.REVOKE_TOKEN_URL or config.get('revocation_endpoint')
 
-    def id_token_issuer(self):
-        return self.ID_TOKEN_ISSUER or \
-            self.oidc_config().get('issuer')
+    async def id_token_issuer(self):
+        config = await self.oidc_config()
+        return self.ID_TOKEN_ISSUER or config.get('issuer')
 
-    def userinfo_url(self):
-        return self.USERINFO_URL or \
-            self.oidc_config().get('userinfo_endpoint')
+    async def userinfo_url(self):
+        config = await self.oidc_config()
+        return self.USERINFO_URL or config.get('userinfo_endpoint')
 
-    def jwks_uri(self):
-        return self.JWKS_URI or \
-            self.oidc_config().get('jwks_uri')
-
-    @cache(ttl=86400)
-    def oidc_config(self):
-        return self.get_json(self.OIDC_ENDPOINT +
-                             '/.well-known/openid-configuration')
+    async def jwks_uri(self):
+        config = await self.oidc_config()
+        return self.JWKS_URI or config.get('jwks_uri')
 
     @cache(ttl=86400)
-    def get_jwks_keys(self):
-        keys = self.get_remote_jwks_keys()
+    async def oidc_config(self):
+        return await self.get_json(self.OIDC_ENDPOINT +
+                                   '/.well-known/openid-configuration')
+
+    @cache(ttl=86400)
+    async def get_jwks_keys(self):
+        keys = await self.get_remote_jwks_keys()
 
         # Add client secret as oct key so it can be used for HMAC signatures
         # client_id, client_secret = self.get_key_and_secret()
         # keys.append({'key': client_secret, 'kty': 'oct'})
         return keys
 
-    def get_remote_jwks_keys(self):
-        response = self.request(self.jwks_uri())
+    async def get_remote_jwks_keys(self):
+        response = await self.request(await self.jwks_uri())
         return json.loads(response.text)['keys']
 
     def auth_params(self, state=None):
@@ -142,22 +140,22 @@ class OpenIdConnectAuth(BaseOAuth2):
         else:
             raise AuthTokenError(self, 'Incorrect id_token: nonce')
 
-    def find_valid_key(self, id_token):
-        for key in self.get_jwks_keys():
+    async def find_valid_key(self, id_token):
+        for key in await self.get_jwks_keys():
             rsakey = jwk.construct(key)
             message, encoded_sig = id_token.rsplit('.', 1)
             decoded_sig = base64url_decode(encoded_sig.encode('utf-8'))
             if rsakey.verify(message.encode('utf-8'), decoded_sig):
                 return key
 
-    def validate_and_return_id_token(self, id_token, access_token):
+    async def validate_and_return_id_token(self, id_token, access_token):
         """
         Validates the id_token according to the steps at
         http://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation.
         """
         client_id, client_secret = self.get_key_and_secret()
 
-        key = self.find_valid_key(id_token)
+        key = await self.find_valid_key(id_token)
 
         if not key:
             raise AuthTokenError(self, 'Signature verification failed')
@@ -171,7 +169,7 @@ class OpenIdConnectAuth(BaseOAuth2):
                 rsakey.to_pem().decode('utf-8'),
                 algorithms=[alg],
                 audience=client_id,
-                issuer=self.id_token_issuer(),
+                issuer=await self.id_token_issuer(),
                 access_token=access_token,
                 options=self.JWT_DECODE_OPTIONS,
             )
@@ -186,20 +184,20 @@ class OpenIdConnectAuth(BaseOAuth2):
 
         return claims
 
-    def request_access_token(self, *args, **kwargs):
+    async def request_access_token(self, *args, **kwargs):
         """
         Retrieve the access token. Also, validate the id_token and
         store it (temporarily).
         """
-        response = self.get_json(*args, **kwargs)
-        self.id_token = self.validate_and_return_id_token(
+        response = await self.get_json(*args, **kwargs)
+        self.id_token = await self.validate_and_return_id_token(
             response['id_token'],
             response['access_token']
         )
         return response
 
-    def user_data(self, access_token, *args, **kwargs):
-        return self.get_json(self.userinfo_url(), headers={
+    async def user_data(self, access_token, *args, **kwargs):
+        return await self.get_json(await self.userinfo_url(), headers={
             'Authorization': 'Bearer {0}'.format(access_token)
         })
 

@@ -1,5 +1,4 @@
 """Tornado SQLAlchemy ORM models for Social Auth."""
-
 from sqlalchemy.orm import relationship, backref
 from social_sqlalchemy.storage import (
     SQLAlchemyUserMixin,

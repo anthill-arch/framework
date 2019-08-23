@@ -6,6 +6,7 @@ from .pipeline.utils import partial_load, partial_store, partial_prepare
 import hashlib
 import time
 import random
+import string
 
 
 class BaseTemplateStrategy:
@@ -29,9 +30,7 @@ class BaseTemplateStrategy:
 
 
 class BaseStrategy:
-    ALLOWED_CHARS = 'abcdefghijklmnopqrstuvwxyz' \
-                    'ABCDEFGHIJKLMNOPQRSTUVWXYZ' \
-                    '0123456789'
+    ALLOWED_CHARS = string.ascii_letters + string.digits
     DEFAULT_TEMPLATE_STRATEGY = BaseTemplateStrategy
 
     def __init__(self, storage=None, tpl=None):
@@ -91,9 +90,9 @@ class BaseStrategy:
     def partial_load(self, token):
         return partial_load(self, token)
 
-    def clean_partial_pipeline(self, token):
+    async def clean_partial_pipeline(self, token):
         self.storage.partial.destroy(token)
-        self.session_pop(PARTIAL_TOKEN_SESSION_NAME)
+        await self.session_pop(PARTIAL_TOKEN_SESSION_NAME)
 
     def openid_store(self):
         return OpenIdStore(self)
@@ -125,7 +124,7 @@ class BaseStrategy:
         return uri
 
     def get_language(self):
-        """Return current language"""
+        """Return current language."""
         return ''
 
     def send_email_validation(self, backend, email, partial_token=None):

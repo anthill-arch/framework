@@ -1,8 +1,10 @@
 from ..exceptions import AuthAlreadyAssociated, AuthException, AuthForbidden
+from anthill.framework.utils.asynchronous import ensure_async
 
 
-def social_details(backend, details, response, *args, **kwargs):
-    return {'details': dict(backend.get_user_details(response), **details)}
+async def social_details(backend, details, response, *args, **kwargs):
+    result = await ensure_async(backend.get_user_details, response)
+    return {'details': dict(result, **details)}
 
 
 def social_uid(backend, details, response, *args, **kwargs):
@@ -23,10 +25,12 @@ def social_user(backend, uid, user=None, *args, **kwargs):
             raise AuthAlreadyAssociated(backend, msg)
         elif not user:
             user = social.user
-    return {'social': social,
-            'user': user,
-            'is_new': user is None,
-            'new_association': social is None}
+    return {
+        'social': social,
+        'user': user,
+        'is_new': user is None,
+        'new_association': social is None
+    }
 
 
 def associate_user(backend, uid, user=None, social=None, *args, **kwargs):
@@ -43,9 +47,11 @@ def associate_user(backend, uid, user=None, social=None, *args, **kwargs):
             #   https://github.com/omab/django-social-auth/issues/131
             return social_user(backend, uid, user, *args, **kwargs)
         else:
-            return {'social': social,
-                    'user': social.user,
-                    'new_association': True}
+            return {
+                'social': social,
+                'user': social.user,
+                'new_association': True
+            }
 
 
 def associate_by_email(backend, details, user=None, *args, **kwargs):
@@ -75,13 +81,15 @@ def associate_by_email(backend, details, user=None, *args, **kwargs):
                 'The given email address is associated with another account'
             )
         else:
-            return {'user': users[0],
-                    'is_new': False}
+            return {
+                'user': users[0],
+                'is_new': False
+            }
 
 
 def load_extra_data(backend, details, response, uid, user, *args, **kwargs):
-    social = kwargs.get('social') or \
-             backend.strategy.storage.user.get_social_auth(backend.name, uid)
+    social = (kwargs.get('social') or
+              backend.strategy.storage.user.get_social_auth(backend.name, uid))
     if social:
         extra_data = backend.extra_data(user, uid, response, details,
                                         *args, **kwargs)

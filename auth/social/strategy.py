@@ -29,8 +29,10 @@ class TornadoStrategy(BaseStrategy):
 
     def __init__(self, storage, request_handler, tpl=None):
         self.request_handler = request_handler
-        self.request = self.request_handler.request if self.request_handler else None
-        self.session = self.request_handler.session if self.request_handler else {}
+        self.request, self.session = None, None
+        if request_handler:
+            self.request = request_handler.request
+            self.session = request_handler.session
         super().__init__(storage, tpl)
 
     def get_setting(self, name):

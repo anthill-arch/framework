@@ -14,7 +14,8 @@ import six
 
 
 class OAuthAuth(BaseAuth):
-    """OAuth authentication backend base class.
+    """
+    OAuth authentication backend base class.
 
     Also settings will be inspected to get more values names that should be
     stored on extra_data field. Setting name is created from current backend
@@ -178,7 +179,7 @@ class BaseOAuth1(OAuthAuth):
 
     @handle_http_errors
     async def auth_complete(self, *args, **kwargs):
-        """Return user, might be logged in"""
+        """Return user, might be logged in."""
         # Multiple unauthorized tokens are supported (see #521)
         self.process_error(self.data)
         self.validate_state()
@@ -309,7 +310,8 @@ class BaseOAuth1(OAuthAuth):
 
 
 class BaseOAuth2(OAuthAuth):
-    """Base class for OAuth2 providers.
+    """
+    Base class for OAuth2 providers.
 
     OAuth2 draft details at:
         http://tools.ietf.org/html/draft-ietf-oauth-v2-10
@@ -365,8 +367,10 @@ class BaseOAuth2(OAuthAuth):
         }
 
     def extra_data(self, user, uid, response, details=None, *args, **kwargs):
-        """Return access_token, token_type, and extra defined names to store in
-            extra_data field."""
+        """
+        Return access_token, token_type, and extra defined names to store in
+        extra_data field.
+        """
         data = super(BaseOAuth2, self).extra_data(user, uid, response,
                                                   details=details,
                                                   *args, **kwargs)
@@ -386,7 +390,7 @@ class BaseOAuth2(OAuthAuth):
 
     @handle_http_errors
     async def auth_complete(self, *args, **kwargs):
-        """Completes login process, must return user instance"""
+        """Completes login process, must return user instance."""
         self.process_error(self.data)
         state = self.validate_state()
         data, params = None, None
@@ -409,7 +413,7 @@ class BaseOAuth2(OAuthAuth):
 
     @handle_http_errors
     async def do_auth(self, access_token, *args, **kwargs):
-        """Finish the auth process once the access_token was retrieved"""
+        """Finish the auth process once the access_token was retrieved."""
         data = await self.user_data(access_token, *args, **kwargs)
         response = kwargs.get('response') or {}
         response.update(data or {})

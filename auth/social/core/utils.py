@@ -167,15 +167,15 @@ def drop_lists(value):
     return out
 
 
-def partial_pipeline_data(backend, user=None, partial_token=None,
-                          *args, **kwargs):
+async def partial_pipeline_data(backend, user=None, partial_token=None,
+                                *args, **kwargs):
     request_data = backend.strategy.request_data()
 
     partial_argument_name = backend.setting('PARTIAL_PIPELINE_TOKEN_NAME',
                                             'partial_token')
-    partial_token = partial_token or \
-        request_data.get(partial_argument_name) or \
-        backend.strategy.session_get(PARTIAL_TOKEN_SESSION_NAME, None)
+    partial_token = (partial_token or
+                     request_data.get(partial_argument_name) or
+                     await backend.strategy.session_get(PARTIAL_TOKEN_SESSION_NAME, None))
 
     if partial_token:
         partial = backend.strategy.partial_load(partial_token)
@@ -201,11 +201,11 @@ def partial_pipeline_data(backend, user=None, partial_token=None,
             partial.extend_kwargs(kwargs)
             return partial
         else:
-            backend.strategy.clean_partial_pipeline(partial_token)
+            await backend.strategy.clean_partial_pipeline(partial_token)
 
 
 def build_absolute_uri(host_url, path=None):
-    """Build absolute URI with given (optional) path"""
+    """Build absolute URI with given (optional) path."""
     path = path or ''
     if path.startswith('http://') or path.startswith('https://'):
         return path
@@ -258,7 +258,8 @@ def handle_http_errors(func):
 
 
 def append_slash(url):
-    """Make sure we append a slash at the end of the URL otherwise we
+    """
+    Make sure we append a slash at the end of the URL otherwise we
     have issues with urljoin Example:
     >>> urlparse.urljoin('http://www.example.com/api/v3', 'user/1/')
     'http://www.example.com/api/user/1/'

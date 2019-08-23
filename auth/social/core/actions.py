@@ -20,8 +20,8 @@ async def do_auth(backend, redirect_name='next'):
         # Check and sanitize a user-defined GET/POST next field value
         redirect_uri = data[redirect_name]
         if backend.setting('SANITIZE_REDIRECTS', True):
-            allowed_hosts = backend.setting('ALLOWED_REDIRECT_HOSTS', []) + \
-                            [backend.strategy.request_host()]
+            allowed_hosts = backend.setting('ALLOWED_REDIRECT_HOSTS', [])
+            allowed_hosts += [backend.strategy.request_host()]
             redirect_uri = sanitize_redirect(allowed_hosts, redirect_uri)
         await backend.strategy.session_set(
             redirect_name,
@@ -37,18 +37,18 @@ async def do_complete(backend, login, user=None, redirect_name='next',
     is_authenticated = user_is_authenticated(user)
     user = user if is_authenticated else None
 
-    partial = partial_pipeline_data(backend, user, *args, **kwargs)
+    partial = await partial_pipeline_data(backend, user, *args, **kwargs)
     if partial:
         user = await backend.continue_pipeline(partial)
         # clean partial data after usage
         backend.strategy.clean_partial_pipeline(partial.token)
     else:
-        user = backend.complete(user=user, *args, **kwargs)
+        user = await backend.complete(user=user, *args, **kwargs)
 
     # pop redirect value before the session is trashed on login(), but after
     # the pipeline so that the pipeline can change the redirect if needed
-    redirect_value = backend.strategy.session_get(redirect_name, '') or \
-                     data.get(redirect_name, '')
+    redirect_value = (await backend.strategy.session_get(redirect_name, '') or
+                      data.get(redirect_name, ''))
 
     # check if the output value is something else than a user and just
     # return it to the client
@@ -70,14 +70,12 @@ async def do_complete(backend, login, user=None, redirect_name='next',
             social_user = user.social_user
             login(backend, user, social_user)
             # store last login backend name in session
-            backend.strategy.session_set('social_auth_last_login_backend',
-                                         social_user.provider)
+            await backend.strategy.session_set('social_auth_last_login_backend',
+                                               social_user.provider)
 
             if is_new:
-                url = setting_url(backend,
-                                  'NEW_USER_REDIRECT_URL',
-                                  redirect_value,
-                                  'LOGIN_REDIRECT_URL')
+                url = setting_url(backend, 'NEW_USER_REDIRECT_URL',
+                                  redirect_value, 'LOGIN_REDIRECT_URL')
             else:
                 url = setting_url(backend, redirect_value, 'LOGIN_REDIRECT_URL')
         else:
@@ -91,29 +89,30 @@ async def do_complete(backend, login, user=None, redirect_name='next',
 
     if redirect_value and redirect_value != url:
         redirect_value = quote(redirect_value)
-        url += ('&' if '?' in url else '?') + \
-               '{0}={1}'.format(redirect_name, redirect_value)
+        url += (('&' if '?' in url else '?') +
+                '{0}={1}'.format(redirect_name, redirect_value))
 
     if backend.setting('SANITIZE_REDIRECTS', True):
-        allowed_hosts = backend.setting('ALLOWED_REDIRECT_HOSTS', []) + \
-                        [backend.strategy.request_host()]
-        url = sanitize_redirect(allowed_hosts, url) or \
-              backend.setting('LOGIN_REDIRECT_URL')
+        allowed_hosts = backend.setting('ALLOWED_REDIRECT_HOSTS', [])
+        allowed_hosts += [backend.strategy.request_host()]
+        url = (sanitize_redirect(allowed_hosts, url) or
+               backend.setting('LOGIN_REDIRECT_URL'))
     return backend.strategy.redirect(url)
 
 
 async def do_disconnect(backend, user, association_id=None, redirect_name='next',
                         *args, **kwargs):
-    partial = partial_pipeline_data(backend, user, *args, **kwargs)
+    partial = await partial_pipeline_data(backend, user, *args, **kwargs)
     if partial:
         if association_id and not partial.kwargs.get('association_id'):
             partial.extend_kwargs({'association_id': association_id})
-        response = backend.disconnect(*partial.args, **partial.kwargs)
+        response = await backend.disconnect(*partial.args, **partial.kwargs)
         # clean partial data after usage
-        backend.strategy.clean_partial_pipeline(partial.token)
+        await backend.strategy.clean_partial_pipeline(partial.token)
     else:
-        response = backend.disconnect(user=user, association_id=association_id,
-                                      *args, **kwargs)
+        response = await backend.disconnect(user=user,
+                                            association_id=association_id,
+                                            *args, **kwargs)
 
     if isinstance(response, dict):
         url = backend.strategy.absolute_uri(

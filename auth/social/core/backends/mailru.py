@@ -14,10 +14,12 @@ class MailruOAuth2(BaseOAuth2):
     AUTHORIZATION_URL = 'https://connect.mail.ru/oauth/authorize'
     ACCESS_TOKEN_URL = 'https://connect.mail.ru/oauth/token'
     ACCESS_TOKEN_METHOD = 'POST'
-    EXTRA_DATA = [('refresh_token', 'refresh_token'),
-                  ('expires_in', 'expires')]
+    EXTRA_DATA = [
+        ('refresh_token', 'refresh_token'),
+        ('expires_in', 'expires')
+    ]
 
-    async def get_user_details(self, response):
+    def get_user_details(self, response):
         """Return user details from Mail.ru request."""
         fullname, first_name, last_name = self.get_user_names(
             first_name=unquote(response['first_name']),
@@ -44,5 +46,5 @@ class MailruOAuth2(BaseOAuth2):
         data['sig'] = md5(
             (''.join(param_list) + secret).encode('utf-8')
         ).hexdigest()
-        return await self.get_json('http://www.appsmail.ru/platform/api',
-                                   params=data)[0]
+        return await self.get_json(
+            'http://www.appsmail.ru/platform/api', params=data)[0]

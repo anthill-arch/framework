@@ -5,7 +5,7 @@ from ..exceptions import (
     AuthException, AuthFailed, AuthCanceled,
     AuthUnknownError, AuthMissingParameter, AuthTokenError
 )
-from anthill.framework.utils.asynchronous import as_future
+from anthill.framework.utils.asynchronous import as_future, thread_pool_exec as future_exec
 from openid.consumer.consumer import Consumer, SUCCESS, CANCEL, FAILURE
 from openid.consumer.discover import DiscoveryFailure
 from openid.extensions import sreg, ax, pape
@@ -38,13 +38,13 @@ SESSION_NAME = 'openid'
 
 
 class OpenIdAuth(BaseAuth):
-    """Generic OpenID authentication backend"""
+    """Generic OpenID authentication backend."""
     name = 'openid'
     URL = None
     USERNAME_KEY = 'username'
 
     def get_user_id(self, details, response):
-        """Return user unique id provided by service"""
+        """Return user unique id provided by service."""
         return response.identity_url
 
     def get_ax_attributes(self):
@@ -57,7 +57,8 @@ class OpenIdAuth(BaseAuth):
         return self.setting('SREG_ATTR') or SREG_ATTR
 
     def values_from_response(self, response, sreg_names=None, ax_names=None):
-        """Return values from SimpleRegistration response or
+        """
+        Return values from SimpleRegistration response or
         AttributeExchange response if present.
 
         @sreg_names and @ax_names must be a list of name and aliases
@@ -81,7 +82,7 @@ class OpenIdAuth(BaseAuth):
                     values[name] = resp.getSingle(src, '') or values.get(name)
         return values
 
-    async def get_user_details(self, response):
+    def get_user_details(self, response):
         """Return user details from an OpenID request."""
         values = {
             'username': '',
@@ -158,7 +159,8 @@ class OpenIdAuth(BaseAuth):
 
     def trust_root(self):
         """Return trust-root option."""
-        return self.setting('OPENID_TRUST_ROOT') or self.strategy.absolute_uri('/')
+        return (self.setting('OPENID_TRUST_ROOT') or
+                self.strategy.absolute_uri('/'))
 
     async def continue_pipeline(self, partial):
         """Continue previous halted pipeline."""
@@ -225,7 +227,7 @@ class OpenIdAuth(BaseAuth):
         return request
 
     async def consumer(self):
-        """Create an OpenID Consumer object for the given Django request."""
+        """Create an OpenID Consumer object for the given request."""
         if not hasattr(self, '_consumer'):
             self._consumer = await self.create_consumer(self.strategy.openid_store())
         return self._consumer
@@ -246,7 +248,8 @@ class OpenIdAuth(BaseAuth):
         """Return openid request."""
         consumer = await self.consumer()
         try:
-            return consumer.begin(url_add_parameters(self.openid_url(), params))
+            return await future_exec(consumer.begin,
+                                     url_add_parameters(self.openid_url(), params))
         except DiscoveryFailure as err:
             raise AuthException(self, 'OpenID discovery error: {0}'.format(err))
 

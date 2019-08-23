@@ -1,4 +1,4 @@
-"""Models mixins for Social Auth"""
+"""Models mixins for Social Auth."""
 from openid.association import Association as OpenIdAssociation
 from .exceptions import MissingBackend
 from .backends.utils import get_backend

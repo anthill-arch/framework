@@ -3,8 +3,13 @@ from concurrent.futures import ThreadPoolExecutor
 from tornado.process import cpu_count
 from tornado.ioloop import IOLoop
 from functools import wraps
+from typing import Awaitable
 
-__all__ = ['ThreadPoolExecution', 'thread_pool_exec', 'as_future']
+
+__all__ = [
+    'ThreadPoolExecution', 'thread_pool_exec', 'as_future',
+    'ensure_async'
+]
 
 
 CPU_COUNT = (cpu_count() or 1) * 5
@@ -44,3 +49,10 @@ class ThreadPoolExecution:
 
 thread_pool_exec = ThreadPoolExecution()
 as_future = thread_pool_exec.as_future
+
+
+async def ensure_async(func, *args, **kwargs):
+    result = func(*args, **kwargs)
+    if isinstance(result, Awaitable):
+        return await result
+    return result

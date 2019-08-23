@@ -2,11 +2,11 @@
 Facebook OAuth2 and Canvas Application backends, docs at:
     https://python-social-auth.readthedocs.io/en/latest/backends/facebook.html
 """
-from ..utils import parse_qs, constant_time_compare, handle_http_errors
-from .oauth import BaseOAuth2
 from ..exceptions import (
     AuthException, AuthCanceled, AuthUnknownError, AuthMissingParameter
 )
+from ..utils import parse_qs, constant_time_compare, handle_http_errors
+from .oauth import BaseOAuth2
 import hmac
 import time
 import json
@@ -24,10 +24,8 @@ class FacebookOAuth2(BaseOAuth2):
     RESPONSE_TYPE = None
     SCOPE_SEPARATOR = ','
     AUTHORIZATION_URL = 'https://www.facebook.com/v{version}/dialog/oauth'
-    ACCESS_TOKEN_URL = \
-        'https://graph.facebook.com/v{version}/oauth/access_token'
-    REVOKE_TOKEN_URL = \
-        'https://graph.facebook.com/v{version}/{uid}/permissions'
+    ACCESS_TOKEN_URL = 'https://graph.facebook.com/v{version}/oauth/access_token'
+    REVOKE_TOKEN_URL = 'https://graph.facebook.com/v{version}/{uid}/permissions'
     REVOKE_TOKEN_METHOD = 'DELETE'
     USER_DATA_URL = 'https://graph.facebook.com/v{version}/me'
     EXTRA_DATA = [
@@ -50,7 +48,7 @@ class FacebookOAuth2(BaseOAuth2):
         version = self.setting('API_VERSION', API_VERSION)
         return self.ACCESS_TOKEN_URL.format(version=version)
 
-    async def get_user_details(self, response):
+    def get_user_details(self, response):
         """Return user details from Facebook account."""
         fullname, first_name, last_name = self.get_user_names(
             response.get('name', ''),

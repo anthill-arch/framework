@@ -51,8 +51,8 @@ def get_username(strategy, details, backend, user=None, *args, **kwargs):
         # as base but adding a unique hash at the end. Original
         # username is cut to avoid any field max_length.
         # The final_username may be empty and will skip the loop.
-        while not final_username or \
-              storage.user.user_exists(username=final_username):
+        while (not final_username or
+               storage.user.user_exists(username=final_username)):
             username = short_username + uuid4().hex[:uuid_length]
             final_username = slug_func(clean_func(username[:max_length]))
     else:
@@ -81,8 +81,8 @@ def user_details(strategy, details, user=None, *args, **kwargs):
         return
 
     changed = False  # flag to track changes
-    protected = ('username', 'id', 'pk', 'email') + \
-                tuple(strategy.setting('PROTECTED_USER_FIELDS', []))
+    protected = (('username', 'id', 'pk', 'email') +
+                 tuple(strategy.setting('PROTECTED_USER_FIELDS', [])))
 
     # Update user model attributes with the new data sent by the current
     # provider. Update on some attributes is disabled by default, for

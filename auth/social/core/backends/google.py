@@ -19,7 +19,7 @@ class BaseGoogleAuth:
         else:
             return details['email']
 
-    async def get_user_details(self, response):
+    def get_user_details(self, response):
         """Return user details from Google API account."""
         if 'email' in response:
             email = response['email']
@@ -49,9 +49,7 @@ class BaseGoogleOAuth2API(BaseGoogleAuth):
         """Return user data from Google API."""
         return await self.get_json(
             'https://www.googleapis.com/oauth2/v3/userinfo',
-            headers={
-                'Authorization': 'Bearer %s' % access_token,
-            },
+            headers={'Authorization': 'Bearer %s' % access_token},
         )
 
     def revoke_token_params(self, token, uid):
@@ -161,7 +159,8 @@ class GoogleOAuth(BaseGoogleAuth, BaseOAuth1):
         )
 
     def get_key_and_secret(self):
-        """Return Google OAuth Consumer Key and Consumer Secret pair, uses
+        """
+        Return Google OAuth Consumer Key and Consumer Secret pair, uses
         anonymous by default, beware that this marks the application as not
         registered and a security badge is displayed on authorization page.
         http://code.google.com/apis/accounts/docs/OAuth_ref.html#SigningOAuth

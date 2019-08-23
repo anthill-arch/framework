@@ -3,9 +3,7 @@ Github OAuth2 backend, docs at:
     https://python-social-auth.readthedocs.io/en/latest/backends/github.html
 """
 from requests import HTTPError
-
 from six.moves.urllib.parse import urljoin
-
 from .oauth import BaseOAuth2
 from ..exceptions import AuthFailed
 
@@ -30,7 +28,7 @@ class GithubOAuth2(BaseOAuth2):
     def api_url(self):
         return self.API_URL
 
-    async def get_user_details(self, response):
+    def get_user_details(self, response):
         """Return user details from Github account."""
         fullname, first_name, last_name = self.get_user_names(
             response.get('name')
@@ -94,7 +92,7 @@ class GithubMemberOAuth2(GithubOAuth2):
 
 
 class GithubOrganizationOAuth2(GithubMemberOAuth2):
-    """Github OAuth2 authentication backend for organizations"""
+    """Github OAuth2 authentication backend for organizations."""
     name = 'github-org'
     no_member_string = 'User doesn\'t belong to the organization'
 
@@ -109,7 +107,7 @@ class GithubOrganizationOAuth2(GithubMemberOAuth2):
 
 
 class GithubTeamOAuth2(GithubMemberOAuth2):
-    """Github OAuth2 authentication backend for teams"""
+    """Github OAuth2 authentication backend for teams."""
     name = 'github-team'
     no_member_string = 'User doesn\'t belong to the team'
 

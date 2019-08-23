@@ -14,7 +14,7 @@ class SteamOpenId(OpenIdAuth):
     URL = 'https://steamcommunity.com/openid'
 
     def get_user_id(self, details, response):
-        """Return user unique id provided by service"""
+        """Return user unique id provided by service."""
         return self._user_id(response)
 
     async def get_user_details(self, response):

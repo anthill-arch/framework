@@ -16,7 +16,7 @@ class VKontakteOpenAPI(BaseAuth):
     name = 'vk-openapi'
     ID_KEY = 'id'
 
-    async def get_user_details(self, response):
+    def get_user_details(self, response):
         """Return user details from VK.com request."""
         nickname = response.get('nickname') or ''
         fullname, first_name, last_name = self.get_user_names(
@@ -93,7 +93,7 @@ class VKOAuth2(BaseOAuth2):
         ('expires_in', 'expires')
     ]
 
-    async def get_user_details(self, response):
+    def get_user_details(self, response):
         """Return user details from VK.com account."""
         fullname, first_name, last_name = self.get_user_names(
             first_name=response.get('first_name'),
@@ -162,6 +162,8 @@ class VKAppOAuth2(VKOAuth2):
                 is_user = self.data.get('is_app_user')
             elif user_check == 2:
                 is_user = await vk_api(self, 'isAppUser', {'user_id': user_id}).get('response', 0)
+            else:
+                is_user = False
             if not int(is_user):
                 return None
 
@@ -169,11 +171,10 @@ class VKAppOAuth2(VKOAuth2):
             'auth': self,
             'backend': self,
             'request': self.strategy.request_data(),
-            'response': {
-                self.ID_KEY: user_id,
-            }
+            'response': {self.ID_KEY: user_id}
         }
-        auth_data['response'].update(json.loads(auth_data['request']['api_result'])['response'][0])
+        auth_data['response'].update(
+            json.loads(auth_data['request']['api_result'])['response'][0])
         return await self.strategy.authenticate(*args, **auth_data)
 
 

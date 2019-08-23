@@ -1,5 +1,5 @@
 """
-Backend for SAML 2.0 support
+Backend for SAML 2.0 support.
 
 Terminology:
 
@@ -9,9 +9,9 @@ Terminology:
 """
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
 from onelogin.saml2.settings import OneLogin_Saml2_Settings
-
 from .base import BaseAuth
 from ..exceptions import AuthFailed, AuthMissingParameter
+from anthill.framework.utils.asynchronous import as_future
 
 # Helpful constants:
 OID_COMMON_NAME = "urn:oid:2.5.4.3"
@@ -26,7 +26,7 @@ OID_USERID = "urn:oid:0.9.2342.19200300.100.1.1"
 class SAMLIdentityProvider:
     """Wrapper around configuration for a SAML Identity provider."""
     def __init__(self, name, **kwargs):
-        """Load and parse configuration"""
+        """Load and parse configuration."""
         self.name = name
         # name should be a slug and must not contain a colon, which
         # could conflict with uid prefixing:
@@ -81,21 +81,23 @@ class SAMLIdentityProvider:
 
     @property
     def entity_id(self):
-        """Get the entity ID for this IdP"""
+        """Get the entity ID for this IdP."""
         # Required. e.g. "https://idp.testshib.org/idp/shibboleth"
         return self.conf['entity_id']
 
     @property
     def sso_url(self):
-        """Get the SSO URL for this IdP"""
+        """Get the SSO URL for this IdP."""
         # Required. e.g.
         # "https://idp.testshib.org/idp/profile/SAML2/Redirect/SSO"
         return self.conf['url']
 
     @property
     def saml_config_dict(self):
-        """Get the IdP configuration dict in the format required by
-        python-saml"""
+        """
+        Get the IdP configuration dict in the format required by
+        python-saml.
+        """
         result = {
             'entityId': self.entity_id,
             'singleSignOnService': {
@@ -179,13 +181,13 @@ class SAMLAuth(BaseAuth):
     EXTRA_DATA = []
 
     def get_idp(self, idp_name):
-        """Given the name of an IdP, get a SAMLIdentityProvider instance"""
+        """Given the name of an IdP, get a SAMLIdentityProvider instance."""
         idp_config = self.setting('ENABLED_IDPS')[idp_name]
         return SAMLIdentityProvider(idp_name, **idp_config)
 
     def generate_saml_config(self, idp=None):
         """
-        Generate the configuration required to instantiate OneLogin_Saml2_Auth
+        Generate the configuration required to instantiate OneLogin_Saml2_Auth.
         """
         # The shared absolute URL that all IdPs redirect back to -
         # this is specified in our metadata.xml:
@@ -226,8 +228,8 @@ class SAMLAuth(BaseAuth):
         Returns (metadata XML string, list of errors)
 
         Example usage (Django):
-            from ..apps.django_app.utils import load_strategy, \
-                                                     load_backend
+            from ..apps.django_app.utils import load_strategy, load_backend
+
             def saml_metadata_view(request):
                 complete_url = reverse('social:complete', args=("saml", ))
                 saml_backend = load_backend(load_strategy(request), "saml",
@@ -239,16 +241,14 @@ class SAMLAuth(BaseAuth):
                 return HttpResponseServerError(content=', '.join(errors))
         """
         config = self.generate_saml_config()
-        saml_settings = OneLogin_Saml2_Settings(
-            config,
-            sp_validation_only=True
-        )
+        saml_settings = OneLogin_Saml2_Settings(config,
+                                                sp_validation_only=True)
         metadata = saml_settings.get_sp_metadata()
         errors = saml_settings.validate_metadata(metadata)
         return metadata, errors
 
     def _create_saml_auth(self, idp):
-        """Get an instance of OneLogin_Saml2_Auth"""
+        """Get an instance of OneLogin_Saml2_Auth."""
         config = self.generate_saml_config(idp)
         request_info = {
             'https': 'on' if self.strategy.request_is_secure() else 'off',
@@ -260,9 +260,12 @@ class SAMLAuth(BaseAuth):
         }
         return OneLogin_Saml2_Auth(request_info, config)
 
+    @as_future
     def auth_url(self):
-        """Get the URL to which we must redirect in order to
-        authenticate the user"""
+        """
+        Get the URL to which we must redirect in order to
+        authenticate the user.
+        """
         try:
             idp_name = self.strategy.request_data()['idp']
         except KeyError:
@@ -275,8 +278,10 @@ class SAMLAuth(BaseAuth):
         return auth.login(return_to=idp_name)
 
     def get_user_details(self, response):
-        """Get user details like full name, email, etc. from the
-        response - see auth_complete"""
+        """
+        Get user details like full name, email, etc. from the
+        response - see auth_complete.
+        """
         idp = self.get_idp(response['idp_name'])
         return idp.get_user_details(response['attributes'])
 
@@ -290,7 +295,7 @@ class SAMLAuth(BaseAuth):
         uid = idp.get_user_permanent_id(response['attributes'])
         return '{0}:{1}'.format(idp.name, uid)
 
-    def auth_complete(self, *args, **kwargs):
+    async def auth_complete(self, *args, **kwargs):
         """
         The user has been redirected back from the IdP and we should
         now log them in, if everything checks out.
@@ -303,8 +308,7 @@ class SAMLAuth(BaseAuth):
         if errors or not auth.is_authenticated():
             reason = auth.get_last_error_reason()
             raise AuthFailed(
-                self, 'SAML login failed: {0} ({1})'.format(errors, reason)
-            )
+                self, 'SAML login failed: {0} ({1})'.format(errors, reason))
 
         attributes = auth.get_attributes()
         attributes['name_id'] = auth.get_nameid()
@@ -315,13 +319,13 @@ class SAMLAuth(BaseAuth):
             'session_index': auth.get_session_index(),
         }
         kwargs.update({'response': response, 'backend': self})
-        return self.strategy.authenticate(*args, **kwargs)
+        return await self.strategy.authenticate(*args, **kwargs)
 
     def extra_data(self, user, uid, response, details=None, *args, **kwargs):
-        return super(SAMLAuth, self).extra_data(user, uid,
-                                                response['attributes'],
-                                                details=details,
-                                                *args, **kwargs)
+        return super().extra_data(user, uid,
+                                  response['attributes'],
+                                  details=details,
+                                  *args, **kwargs)
 
     def _check_entitlements(self, idp, attributes):
         """
@@ -336,4 +340,3 @@ class SAMLAuth(BaseAuth):
         be authenticated, or do nothing to allow the login pipeline to
         continue.
         """
-        pass

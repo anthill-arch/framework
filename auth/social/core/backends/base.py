@@ -1,4 +1,4 @@
-from anthill.framework.utils.asynchronous import as_future
+from anthill.framework.utils.asynchronous import as_future, ensure_async
 from ..utils import SSLHttpAdapter, module_member, parse_qs, user_agent
 from requests import request, ConnectionError
 from social_core.backends import base
@@ -13,11 +13,7 @@ class BaseAuth(base.BaseAuth):
     the provider response.
     """
     async def start(self):
-        if inspect.iscoroutinefunction(self.uses_redirect):
-            uses_redirect = await self.uses_redirect()
-        else:
-            uses_redirect = self.uses_redirect()
-        if uses_redirect:
+        if await ensure_async(self.uses_redirect):
             return self.strategy.redirect(await self.auth_url())
         else:
             return self.strategy.html(await self.auth_html())
@@ -49,8 +45,10 @@ class BaseAuth(base.BaseAuth):
         # response be passed in as a keyword argument, to make sure we
         # don't match the username/password calling conventions of
         # authenticate.
-        if 'backend' not in kwargs or kwargs['backend'].name != self.name or \
-           'strategy' not in kwargs or 'response' not in kwargs:
+        if ('backend' not in kwargs or
+                kwargs['backend'].name != self.name or
+                'strategy' not in kwargs or
+                'response' not in kwargs):
             return None
 
         self.strategy = kwargs.get('strategy') or self.strategy
@@ -84,9 +82,9 @@ class BaseAuth(base.BaseAuth):
         out.setdefault('request', self.strategy.request_data())
         out.setdefault('details', {})
 
-        if not isinstance(pipeline_index, int) or \
-           pipeline_index < 0 or \
-           pipeline_index >= len(pipeline):
+        if (not isinstance(pipeline_index, int) or
+                pipeline_index < 0 or
+                pipeline_index >= len(pipeline)):
             pipeline_index = 0
 
         for idx, name in enumerate(pipeline[pipeline_index:]):
@@ -101,7 +99,7 @@ class BaseAuth(base.BaseAuth):
             out.update(result)
         return out
 
-    async def get_user_details(self, response):
+    def get_user_details(self, response):
         """
         Must return user details in a know internal struct:
         {

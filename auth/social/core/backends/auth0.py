@@ -36,8 +36,7 @@ class Auth0OAuth2(BaseOAuth2):
         jwks = await self.get_json(self.api_path('.well-known/jwks.json'))
         issuer = self.api_path()
         audience = self.setting('KEY')  # CLIENT_ID
-        payload = jwt.decode(id_token,
-                             jwks,
+        payload = jwt.decode(id_token, jwks,
                              algorithms=['RS256'],
                              audience=audience,
                              issuer=issuer)
